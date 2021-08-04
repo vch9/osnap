@@ -60,7 +60,9 @@ type 'a spec = { gen : 'a gen; printer : 'a printer }
 
 (** [t] is the specification type, describing a function.
     Thus [t] declaration must end with {! (^>>) }. *)
-type ('fn, 'r) t
+type ('fn, 'r) t =
+  | Result : 'a printer -> ('a, 'a) t
+  | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 (** [int] specification *)
 val int : int spec
