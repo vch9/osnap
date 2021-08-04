@@ -44,6 +44,10 @@
     ]}
  *)
 
+module Gen : sig
+  include module type of QCheck.Gen
+end
+
 (** ['a gen] is used to generate random values inside {!spec}.
     QCheck combinators are available using [Spec.Gen]. *)
 type 'a gen = 'a QCheck.Gen.t
