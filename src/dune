@@ -1,3 +1,4 @@
 (library
  (name osnap)
- (public_name osnap))
+ (public_name osnap)
+ (libraries qcheck))
