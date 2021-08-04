@@ -23,6 +23,38 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Interpreter = Test_interpreter
+open Osnap__Spec
+open Osnap__Interpreter
+module Gen = Osnap__Spec.Gen
 
-let () = Alcotest.run "osnap" [ Interpreter.tests ]
+let spec_n n =
+  let gen = Gen.pure n in
+  let printer = string_of_int in
+  { gen; printer }
+
+let zero = spec_n 0
+
+let test_interpret_add () =
+  let f = ( + ) in
+  let spec = zero ^> zero ^>> string_of_int in
+  let expr = spec_to_expr spec f in
+  let actual = interpret expr in
+  Alcotest.(check int) "to_expr (0 ^> 0 ^>> _) (+) |> interpret = 0" 0 actual
+
+let test_interpret_sum () =
+  let f = List.fold_left ( + ) 0 in
+  let spec = list zero ^>> string_of_int in
+  let expr = spec_to_expr spec f in
+  let actual = interpret expr in
+  Alcotest.(check int)
+    "to_expr ([0..0] ^>> _) (fold_left (+) 0) |> interpret = 0"
+    0
+    actual
+
+let tests =
+  ( "Interpreter",
+    Alcotest.
+      [
+        test_case "interpret add 0 0 = 0" `Quick test_interpret_add;
+        test_case "interpret sum [0..0] = 0" `Quick test_interpret_sum;
+      ] )
