@@ -23,8 +23,41 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Interpreter = Test_interpreter
-module Memory = Test_memory
-module Diff = Test_diff
+open Osnap__Diff
 
-let () = Alcotest.run "osnap" [ Interpreter.tests; Memory.tests; Diff.tests ]
+let eq = Alcotest.of_pp pp
+
+let test_diff_new () =
+  let prev = None in
+  let next = "foo" in
+
+  let expected = New "foo" in
+  let actual = diff prev next in
+
+  Alcotest.check eq "diff None foo = New foo" expected actual
+
+let test_diff_same () =
+  let prev = Some "foo" in
+  let next = "foo" in
+
+  let expected = Same in
+  let actual = diff prev next in
+
+  Alcotest.check eq "diff (Some foo) foo = Sucess" expected actual
+
+let test_diff () =
+  let prev = Some "oof" in
+  let next = "foo" in
+
+  let expected = Diff "foo" in
+  let actual = diff prev next in
+
+  Alcotest.check eq "diff (Some foo) foo = Sucess" expected actual
+
+let tests =
+  ( "Diff",
+    Alcotest.
+      [
+        test_case "test diff new" `Quick test_diff_new;
+        test_case "test diff same" `Quick test_diff_same;
+      ] )
