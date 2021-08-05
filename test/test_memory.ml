@@ -23,7 +23,37 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Interpreter = Test_interpreter
-module Memory = Test_memory
+open Osnap__Memory
 
-let () = Alcotest.run "osnap" [ Interpreter.tests; Memory.tests ]
+let test_create_osnap () =
+  let () = create_osnap "./" in
+  let expected_file = ".osnap/.keep" in
+  Alcotest.(check bool)
+    "create_osnap ./; file_exists .osnap/.keep"
+    true
+    (Sys.file_exists expected_file)
+
+let test_write_read () =
+  let content = "foo" in
+  let path = "./foo" in
+  let () = write_osnap path content in
+  let content' = read_osnap path in
+  Alcotest.(check string) "write path s; read path = s" content content'
+
+let test_write_read_lines () =
+  let content = {|
+    add 0 0 = 0;
+    add 1 1 = 2; |} in
+  let path = "./foo" in
+  let () = write_osnap path content in
+  let content' = read_osnap path in
+  Alcotest.(check string) "write path s; read path = s" content content'
+
+let tests =
+  ( "Memory",
+    Alcotest.
+      [
+        test_case "test build_to_src_path ./" `Quick test_create_osnap;
+        test_case "test write_read ./" `Quick test_write_read;
+        test_case "test write_read ./" `Quick test_write_read_lines;
+      ] )
