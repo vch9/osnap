@@ -62,9 +62,9 @@ module Test : sig
     ?count:int -> path:string -> spec:('a, 'b) Spec.t -> ('a -> 'b) -> t
 end
 
-(** {2 Runner test} *)
+(** {2 Runner test}
 
-(** Runner has tree mode:
+    Runner has tree mode:
     
     - Interactive:
 
@@ -83,7 +83,7 @@ end
 
          f 5 6 = 11; *)
 
-      (* Then, the function under test is update *)
+      (* Then, the function under test is updated *)
       let test =
         let spec = OSnap.Spec.(int ^> int ^>> int) in
         Osnap.Test.make ~count:1 ~path:".osnap/add" ~spec (fun _ _ -> 0)
@@ -112,7 +112,7 @@ end
 
          f 5 6 = 11; *)
 
-      (* Then, the function under test is update *)
+      (* Then, the function under test is updated *)
       let test =
         let spec = OSnap.Spec.(int ^> int ^>> int) in
         Osnap.Test.make ~count:1 ~path:".osnap/add" ~spec (fun _ _ -> 0)
@@ -138,7 +138,7 @@ end
 
          f 5 6 = 11; *)
 
-      (* Then, the function under test is update *)
+      (* Then, the function under test is updated *)
       let test =
         let spec = OSnap.Spec.(int ^> int ^>> int) in
         Osnap.Test.make ~count:1 ~path:".osnap/add" ~spec (fun _ _ -> 0)
