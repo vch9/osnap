@@ -23,4 +23,22 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let () = failwith "TODO"
+module Test = struct
+  type ('a, 'b) cell = {
+    path : string;
+    spec : ('a, 'b) Spec.t;
+    f : 'a -> 'b;
+  }[@@ocamlformat "disable"]
+
+  type t = Test : ('a, 'b) cell -> t
+
+  let make ~path ~spec f = Test { path; spec; f }
+end
+
+module Runner = struct
+  type mode = Interactive | Promote | Error
+
+  let run_tests ?(mode = Error) tests =
+    let _ = (mode, tests) in
+    0
+end
