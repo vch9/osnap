@@ -28,11 +28,12 @@ module Test = struct
     path : string;
     spec : ('a, 'b) Spec.t;
     f : 'a -> 'b;
-  }[@@ocamlformat "disable"]
+    count : int;
+  }
 
   type t = Test : ('a, 'b) cell -> t
 
-  let make ~path ~spec f = Test { path; spec; f }
+  let make ?(count = 10) ~path ~spec f = Test { path; spec; f; count }
 end
 
 module Runner = struct
