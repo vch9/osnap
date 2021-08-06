@@ -23,29 +23,14 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** [create_osnap path] creates [.osnap/.keep] directory at [path] *)
-let create_osnap path =
-  let path = Printf.sprintf "%s.osnap/" path in
-  let () = Unix.mkdir path 0o777 in
-  let file = path ^ ".keep" in
-  let oc = open_out file in
-  close_out oc
+type t = { name : string; applications : string list list }
 
-(** [read_osnap path] reads content at [path] *)
-let read_osnap path =
-  let lines = ref [] in
-  let ic = open_in path in
-  try
-    while true do
-      lines := input_line ic :: !lines
-    done ;
-    !lines |> String.concat "\n"
-  with End_of_file ->
-    close_in ic ;
-    List.rev !lines |> String.concat "\n"
+let encoding =
+  let open Data_encoding in
+  def "memory.t" ~title:"Osnap memory"
+  @@ conv
+       (fun { name; applications } -> (name, applications))
+       (fun (name, applications) -> { name; applications })
+       (obj2 (req "name" string) (req "applications" (list (list string))))
 
-(** [write_osnap path content] writes [content] at [path] *)
-let write_osnap path content =
-  let oc = open_out path in
-  let () = Printf.fprintf oc "%s" content in
-  close_out oc
+let build name applications = { name; applications }

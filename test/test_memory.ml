@@ -25,35 +25,34 @@
 
 open Osnap__Memory
 
-let test_create_osnap () =
-  let () = create_osnap "./" in
-  let expected_file = ".osnap/.keep" in
-  Alcotest.(check bool)
-    "create_osnap ./; file_exists .osnap/.keep"
-    true
-    (Sys.file_exists expected_file)
+let test_encode_empty () =
+  let x = build "empty" [] in
+  let expected = {|{ "name": "empty", "applications": [] }|} in
+  let actual =
+    Data_encoding.Json.construct encoding x |> Data_encoding.Json.to_string
+  in
+  Alcotest.(check string)
+    "build empty [] = { name = empty; applications = [] }"
+    expected
+    actual
 
-let test_write_read () =
-  let content = "foo" in
-  let path = "./foo" in
-  let () = write_osnap path content in
-  let content' = read_osnap path in
-  Alcotest.(check string) "write path s; read path = s" content content'
-
-let test_write_read_lines () =
-  let content = {|
-    add 0 0 = 0;
-    add 1 1 = 2; |} in
-  let path = "./foo" in
-  let () = write_osnap path content in
-  let content' = read_osnap path in
-  Alcotest.(check string) "write path s; read path = s" content content'
+let test_encode_nonempty () =
+  let x = build "foo" [ [ "0"; "0"; "0" ]; [ "2"; "2"; "2" ] ] in
+  let expected =
+    {|{ "name": "foo", "applications": [ [ "0", "0", "0" ], [ "2", "2", "2" ] ] }|}
+  in
+  let actual =
+    Data_encoding.Json.construct encoding x |> Data_encoding.Json.to_string
+  in
+  Alcotest.(check string)
+    "build empty [] = { name: foo, applications = [[0;0;0];[2;2;4]] }"
+    expected
+    actual
 
 let tests =
   ( "Memory",
     Alcotest.
       [
-        test_case "test build_to_src_path ./" `Quick test_create_osnap;
-        test_case "test write_read ./" `Quick test_write_read;
-        test_case "test write_read ./" `Quick test_write_read_lines;
+        test_case "test encode empty" `Quick test_encode_empty;
+        test_case "test encode nonempty" `Quick test_encode_nonempty;
       ] )

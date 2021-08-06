@@ -1,4 +1,4 @@
 (library
  (name osnap)
  (public_name osnap)
- (libraries qcheck patdiff))
+ (libraries qcheck patdiff data-encoding))
