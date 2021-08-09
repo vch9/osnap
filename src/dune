@@ -1,4 +1,5 @@
 (library
  (name osnap)
  (public_name osnap)
- (libraries qcheck patdiff data-encoding))
+ (preprocess (pps ppx_deriving.show))
+ (libraries qcheck patdiff data-encoding ppx_deriving))
