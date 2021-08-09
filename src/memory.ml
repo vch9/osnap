@@ -23,14 +23,17 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-type t = { name : string; applications : string list list }
+module Snapshot = struct
+  type t = { name : string; applications : string list list }
+  [@@deriving show { with_path = false }]
 
-let encoding =
-  let open Data_encoding in
-  def "memory.t" ~title:"Osnap memory"
-  @@ conv
-       (fun { name; applications } -> (name, applications))
-       (fun (name, applications) -> { name; applications })
-       (obj2 (req "name" string) (req "applications" (list (list string))))
+  let applications x = x.applications
 
-let build name applications = { name; applications }
+  let build name applications = { name; applications }
+end
+
+module Encode = struct
+  let to_string = Marshal.to_string
+
+  let from_string x = Marshal.from_string x 0
+end

@@ -23,31 +23,83 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Osnap__Memory
+module M = Osnap__Memory
 
 let test_encode_empty () =
-  let x = build "empty" [] in
-  let expected = {|{ "name": "empty", "applications": [] }|} in
-  let actual =
-    Data_encoding.Json.construct encoding x |> Data_encoding.Json.to_string
-  in
+  let x = M.Snapshot.build "empty" [] in
+  let expected = {|{ name = "empty"; applications = [] }|} in
+  let actual = M.Snapshot.show x in
   Alcotest.(check string)
     "build empty [] = { name = empty; applications = [] }"
     expected
     actual
 
 let test_encode_nonempty () =
-  let x = build "foo" [ [ "0"; "0"; "0" ]; [ "2"; "2"; "2" ] ] in
+  let x = M.Snapshot.build "foo" [ [ "0"; "0"; "0" ]; [ "2"; "2"; "2" ] ] in
   let expected =
-    {|{ "name": "foo", "applications": [ [ "0", "0", "0" ], [ "2", "2", "2" ] ] }|}
+    {|{ name = "foo"; applications = [["0"; "0"; "0"]; ["2"; "2"; "2"]] }|}
   in
-  let actual =
-    Data_encoding.Json.construct encoding x |> Data_encoding.Json.to_string
-  in
+  let actual = M.Snapshot.show x in
   Alcotest.(check string)
     "build empty [] = { name: foo, applications = [[0;0;0];[2;2;4]] }"
     expected
     actual
+
+let test_encode_marshal () =
+  let arg0 = M.Encode.to_string 0 [] in
+  let arg1 = M.Encode.to_string 1 [] in
+  let x = M.Snapshot.build "foo" [ [ arg0; arg1 ] ] in
+  let expected =
+    {|{ name = "foo";
+  applications =
+  [["\132\149\166\190\000\000\000\001\000\000\000\000\000\000\000\000\000\000\000\000@";
+     "\132\149\166\190\000\000\000\001\000\000\000\000\000\000\000\000\000\000\000\000A"
+     ]
+    ]
+  }|}
+  in
+  let actual = M.Snapshot.show x in
+  Alcotest.(check string) "build with encoded int and string" expected actual
+
+let test_encode_args () =
+  let open Osnap__Interpreter in
+  let args = Cons (0, Cons ("0", Nil)) in
+  let arg0 = M.Encode.to_string args [] in
+  let x = M.Snapshot.build "foo" [ [ arg0 ] ] in
+  let expected =
+    {|{ name = "foo";
+  applications =
+  [["\132\149\166\190\000\000\000\006\000\000\000\003\000\000\000\b\000\000\000\b\160@\160!0@"
+     ]
+    ]
+  }|}
+  in
+  let actual = M.Snapshot.show x in
+  Alcotest.(check string) "build with encoded Interpreter.args" expected actual
+
+let test_decode_marshal () =
+  let val0 = 0 in
+  let val1 = 1 in
+  let arg0 = M.Encode.to_string val0 [] in
+  let arg1 = M.Encode.to_string val1 [] in
+  let x = M.Snapshot.build "foo" [ [ arg0; arg1 ] ] in
+  let y = M.Encode.to_string x [] in
+
+  let b =
+    val0 = M.Encode.from_string arg0
+    && val1 = M.Encode.from_string arg1
+    && x = M.Encode.from_string y
+  in
+  Alcotest.(check bool) "decode basic values" true b
+
+let test_decode_args () =
+  let open Osnap__Interpreter in
+  let x = Cons (0, Cons ("0", Nil)) in
+  let y = M.Encode.to_string x [] in
+
+  let b = x = M.Encode.from_string y in
+
+  Alcotest.(check bool) "decode args" true b
 
 let tests =
   ( "Memory",
@@ -55,4 +107,8 @@ let tests =
       [
         test_case "test encode empty" `Quick test_encode_empty;
         test_case "test encode nonempty" `Quick test_encode_nonempty;
+        test_case "test encode with marshal" `Quick test_encode_marshal;
+        test_case "test encode with marshal args" `Quick test_encode_args;
+        test_case "test decode with marshal" `Quick test_decode_marshal;
+        test_case "test decode with marshal args" `Quick test_decode_args;
       ] )
