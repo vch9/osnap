@@ -60,3 +60,15 @@ let rec interpret : type a. a expr -> a = function
   | Apply (f, x) -> (interpret f) (interpret x)
   | Term x -> x
   | Fun f -> f
+
+module Internal_for_tests = struct
+  (** [spec_to_args] instantiate arguments values using generators *)
+  let rec spec_to_args :
+      type a b. Random.State.t -> (a, b) Spec.t -> (a, b) args =
+   fun rand spec ->
+    match spec with
+    | Result _ -> Nil
+    | Arrow ({ gen; _ }, spec) ->
+        let x = QCheck.Gen.generate1 ~rand gen in
+        Cons (x, spec_to_args rand spec)
+end

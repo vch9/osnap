@@ -101,6 +101,24 @@ let test_decode_args () =
 
   Alcotest.(check bool) "decode args" true b
 
+let test_decode_applications () =
+  let open Osnap__Spec in
+  let spec = int ^> int ^>> string_of_int in
+  let f = M.Encode.to_string in
+  let snapshot =
+    M.Snapshot.build "add" [ [ f 0 []; f 1 []; f 2 [] ] ]
+    |> M.Snapshot.decode spec
+  in
+
+  let expected = {|{ name = "add"; applications = [["0"; "1"; "2"]] }|} in
+  let actual = M.Snapshot.show snapshot in
+
+  Alcotest.(check string) "decode applications inside snapshot" expected actual
+
+let test_read_none () =
+  let b = M.Snapshot.read "" |> Option.is_none in
+  Alcotest.(check bool) "read None = None" true b
+
 let tests =
   ( "Memory",
     Alcotest.
@@ -111,4 +129,6 @@ let tests =
         test_case "test encode with marshal args" `Quick test_encode_args;
         test_case "test decode with marshal" `Quick test_decode_marshal;
         test_case "test decode with marshal args" `Quick test_decode_args;
+        test_case "test read none" `Quick test_read_none;
+        test_case "test decode applications" `Quick test_decode_applications;
       ] )

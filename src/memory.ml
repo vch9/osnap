@@ -23,6 +23,12 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Encode = struct
+  let to_string = Marshal.to_string
+
+  let from_string x = Marshal.from_string x 0
+end
+
 module Snapshot = struct
   type t = { name : string; applications : string list list }
   [@@deriving show { with_path = false }]
@@ -30,10 +36,27 @@ module Snapshot = struct
   let applications x = x.applications
 
   let build name applications = { name; applications }
-end
 
-module Encode = struct
-  let to_string = Marshal.to_string
+  let read path =
+    if Sys.file_exists path then
+      let ic = open_in path in
+      let x = Marshal.from_channel ic in
+      let () = close_in ic in
+      Some x
+    else None
 
-  let from_string x = Marshal.from_string x 0
+  let rec decode_aux : type a b. (a, b) Spec.t -> string list -> string list =
+   fun spec l ->
+    match (l, spec) with
+    | (x :: xs, Arrow ({ printer; _ }, spec)) ->
+        let x = Encode.from_string x in
+        printer x :: decode_aux spec xs
+    | ([ x ], Result printer) ->
+        let x = Encode.from_string x in
+        [ printer x ]
+    | _ -> []
+
+  let decode spec snap =
+    let applications = snap.applications |> List.map (decode_aux spec) in
+    { snap with applications }
 end
