@@ -23,54 +23,51 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Test = struct
-  type ('a, 'b, 'c) cell = {
-    path : string;
-    spec : ('a -> 'b, 'c) Spec.t;
-    f : 'a -> 'b;
-    count : int;
-  }
+module Spec = Osnap__Spec
+module M = Osnap__Memory
+module Test = Osnap.Test
+module Snapshot = Osnap.Snapshot
 
-  type t = Test : ('a, 'b, 'c) cell -> t
+let test_create_snapshot_one () =
+  let rand = Random.State.make [| 42; 9 |] in
 
-  let path (Test { path; _ }) = path
+  let spec = Spec.(int ^> int ^>> string_of_int) in
+  let test = Test.(make ~count:1 ~path:"" ~spec ( + )) in
+  let snapshot = Snapshot.make ~rand test in
+  let decoded_snapshot = M.Snapshot.decode spec snapshot in
 
-  let make ?(count = 10) ~path ~spec f = Test { path; spec; f; count }
-end
+  let expected =
+    {|{ name = "TODO";
+  applications =
+  [["3306656436478733947"; "2323438535601724629"; "-3593277064774317232"]] }|}
+  in
+  let actual = M.Snapshot.show decoded_snapshot in
 
-module Snapshot = struct
-  open Test
-  module M = Memory
+  Alcotest.(check string) "create snapshot" expected actual
 
-  let rec encode_applications : type a b. (a, b) Interpreter.args -> string list
-      = function
-    | Cons (x, xs) -> M.Encode.to_string x [] :: encode_applications xs
-    | _ -> []
+let test_create_snapshot_two () =
+  let rand = Random.State.make [| 42; 9 |] in
 
-  let make ?rand (Test { spec; f; count; _ }) =
-    let spec_to_args =
-      Option.fold
-        ~none:Interpreter.spec_to_args (* For testing only *)
-        ~some:(fun rand -> Interpreter.Internal_for_tests.spec_to_args rand)
-        rand
-    in
-    let applications =
-      List.init count (fun _ ->
-          let args = spec_to_args spec in
-          let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
-          encode_applications args @ [ M.Encode.to_string res [] ])
-    in
-    M.Snapshot.build "TODO" applications
-end
+  let spec = Spec.(int ^> int ^>> string_of_int) in
+  let test = Test.(make ~count:2 ~path:"" ~spec ( + )) in
+  let snapshot = Snapshot.make ~rand test in
+  let decoded_snapshot = M.Snapshot.decode spec snapshot in
 
-module Runner = struct
-  type mode = Interactive | Promote | Error
+  let expected =
+    {|{ name = "TODO";
+  applications =
+  [["3306656436478733947"; "2323438535601724629"; "-3593277064774317232"];
+    ["-1045094426214325490"; "-2812697657021115463"; "-3857792083235440953"]]
+  }|}
+  in
+  let actual = M.Snapshot.show decoded_snapshot in
 
-  let run _mode test =
-    let _prev = Memory.Snapshot.read (Test.path test) in
-    failwith "TODO"
+  Alcotest.(check string) "create snapshot" expected actual
 
-  let run_tests ?(mode = Error) tests =
-    let () = List.iter (run mode) tests in
-    0
-end
+let tests =
+  ( "Osnap",
+    Alcotest.
+      [
+        test_case "create snapshot" `Quick test_create_snapshot_one;
+        test_case "create snapshot" `Quick test_create_snapshot_two;
+      ] )

@@ -59,8 +59,16 @@ module Test : sig
       @param f function to snapshot
   *)
   val make :
-    ?count:int -> path:string -> spec:('a, 'b) Spec.t -> ('a -> 'b) -> t
+    ?count:int -> path:string -> spec:('a -> 'b, 'c) Spec.t -> ('a -> 'b) -> t
 end
+
+(**/**)
+
+module Snapshot : sig
+  val make : ?rand:Random.State.t -> Test.t -> Memory.Snapshot.t
+end
+
+(**/**)
 
 (** {2 Runner test}
 
