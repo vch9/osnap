@@ -34,8 +34,6 @@ module Test = struct
 
   type t = Test : ('a, 'b, 'c) cell -> t
 
-  let path (Test { path; _ }) = path
-
   let make ?(count = 10) ~path ~spec ~name f =
     Test { path; spec; f; count; name }
 end
