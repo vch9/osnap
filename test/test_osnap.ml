@@ -28,18 +28,22 @@ module M = Osnap__Memory
 module Test = Osnap.Test
 module Snapshot = Osnap.Snapshot
 
+let small_int = Spec.{ gen = QCheck.Gen.small_int; printer = string_of_int }
+
+let spec = Spec.(small_int ^> small_int ^>> string_of_int)
+
 let test_create_snapshot_one () =
   let rand = Random.State.make [| 42; 9 |] in
 
   let spec = Spec.(int ^> int ^>> string_of_int) in
   let test = Test.(make ~count:1 ~path:"" ~name:"foo" ~spec ( + )) in
   let snapshot = Snapshot.make ~rand test in
-  let decoded_snapshot = M.Snapshot.decode spec snapshot in
+  let decoded_snapshot = M.Snapshot.decode_str spec snapshot in
 
   let expected =
     {|{ name = "foo";
   applications =
-  [["3306656436478733947"; "2323438535601724629"; "-3593277064774317232"]] }|}
+  [("3306656436478733947 2323438535601724629 ", "-3593277064774317232")] }|}
   in
   let actual = M.Snapshot.show decoded_snapshot in
 
@@ -67,9 +71,6 @@ let test_create_snapshot_two () =
 let test_fancy_show () =
   let rand = Random.State.make [| 42; 9 |] in
 
-  let small_int =
-    Spec.{ gen = QCheck.Gen.small_int; printer = string_of_int }
-  in
   let spec = Spec.(small_int ^> small_int ^>> string_of_int) in
 
   let test = Test.(make ~count:5 ~path:"" ~name:"add" ~spec ( + )) in
