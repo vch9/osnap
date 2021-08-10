@@ -33,6 +33,8 @@ module Snapshot = struct
   type t = { name : string; applications : string list list }
   [@@deriving show { with_path = false }]
 
+  let name x = x.name
+
   let applications x = x.applications
 
   let build name applications = { name; applications }
