@@ -48,7 +48,7 @@ module Snapshot = struct
     let applications = M.Snapshot.applications snapshot in
 
     List.fold_left
-      (fun acc (args, res) -> Printf.sprintf "%s %s %s\n%s" name args res acc)
+      (fun acc (args, res) -> Printf.sprintf "%s %s%s\n%s" name args res acc)
       ""
       applications
 
