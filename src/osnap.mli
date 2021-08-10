@@ -52,14 +52,20 @@
 module Test : sig
   type t
 
-  (** [make path spec f] builds a test
+  (** [make path spec name f] builds a test
       @param count number of application
       @param path where snapshots are stored 
       @param spec function specification
+      @param name function name
       @param f function to snapshot
   *)
   val make :
-    ?count:int -> path:string -> spec:('a -> 'b, 'c) Spec.t -> ('a -> 'b) -> t
+    ?count:int ->
+    path:string ->
+    spec:('a -> 'b, 'c) Spec.t ->
+    name:string ->
+    ('a -> 'b) ->
+    t
 end
 
 (**/**)

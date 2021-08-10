@@ -26,6 +26,7 @@
 module Test = struct
   type ('a, 'b, 'c) cell = {
     path : string;
+    name : string;
     spec : ('a -> 'b, 'c) Spec.t;
     f : 'a -> 'b;
     count : int;
@@ -35,7 +36,8 @@ module Test = struct
 
   let path (Test { path; _ }) = path
 
-  let make ?(count = 10) ~path ~spec f = Test { path; spec; f; count }
+  let make ?(count = 10) ~path ~spec ~name f =
+    Test { path; spec; f; count; name }
 end
 
 module Snapshot = struct
@@ -47,7 +49,7 @@ module Snapshot = struct
     | Cons (x, xs) -> M.Encode.to_string x [] :: encode_applications xs
     | _ -> []
 
-  let make ?rand (Test { spec; f; count; _ }) =
+  let make ?rand (Test { spec; f; count; name; _ }) =
     let spec_to_args =
       Option.fold
         ~none:Interpreter.spec_to_args (* For testing only *)
@@ -60,7 +62,7 @@ module Snapshot = struct
           let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
           encode_applications args @ [ M.Encode.to_string res [] ])
     in
-    M.Snapshot.build "TODO" applications
+    M.Snapshot.build name applications
 end
 
 module Runner = struct

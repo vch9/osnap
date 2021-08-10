@@ -32,12 +32,12 @@ let test_create_snapshot_one () =
   let rand = Random.State.make [| 42; 9 |] in
 
   let spec = Spec.(int ^> int ^>> string_of_int) in
-  let test = Test.(make ~count:1 ~path:"" ~spec ( + )) in
+  let test = Test.(make ~count:1 ~path:"" ~name:"foo" ~spec ( + )) in
   let snapshot = Snapshot.make ~rand test in
   let decoded_snapshot = M.Snapshot.decode spec snapshot in
 
   let expected =
-    {|{ name = "TODO";
+    {|{ name = "foo";
   applications =
   [["3306656436478733947"; "2323438535601724629"; "-3593277064774317232"]] }|}
   in
@@ -49,12 +49,12 @@ let test_create_snapshot_two () =
   let rand = Random.State.make [| 42; 9 |] in
 
   let spec = Spec.(int ^> int ^>> string_of_int) in
-  let test = Test.(make ~count:2 ~path:"" ~spec ( + )) in
+  let test = Test.(make ~count:2 ~path:"" ~name:"foo" ~spec ( + )) in
   let snapshot = Snapshot.make ~rand test in
   let decoded_snapshot = M.Snapshot.decode spec snapshot in
 
   let expected =
-    {|{ name = "TODO";
+    {|{ name = "foo";
   applications =
   [["3306656436478733947"; "2323438535601724629"; "-3593277064774317232"];
     ["-1045094426214325490"; "-2812697657021115463"; "-3857792083235440953"]]
