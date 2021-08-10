@@ -30,12 +30,13 @@ module Test = struct
     spec : ('a -> 'b, 'c) Spec.t;
     f : 'a -> 'b;
     count : int;
+    rand : Random.State.t option;
   }
 
   type t = Test : ('a, 'b, 'c) cell -> t
 
-  let make ?(count = 10) ~path ~spec ~name f =
-    Test { path; spec; f; count; name }
+  let make ?(count = 10) ?rand ~path ~spec ~name f =
+    Test { path; spec; f; count; name; rand }
 end
 
 module Snapshot = struct
@@ -51,7 +52,8 @@ module Snapshot = struct
       ""
       applications
 
-  let make ?rand (Test { spec; f; count; name; _ }) =
+  let make ?rand (Test { spec; f; count; name; rand = rand'; _ }) =
+    let rand = match (rand, rand') with (None, x) -> x | (x, _) -> x in
     let spec_to_args =
       Option.fold
         ~none:Interpreter.spec_to_args
