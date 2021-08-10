@@ -44,6 +44,20 @@ module Snapshot = struct
   open Test
   module M = Memory
 
+  let show snapshot =
+    let name = M.Snapshot.name snapshot in
+    let applications = M.Snapshot.applications snapshot in
+
+    let f n l =
+      let rec aux = function
+        | [ x ] -> "= " ^ x
+        | x :: xs -> x ^ " " ^ aux xs
+        | [] -> assert false
+      in
+      n ^ " " ^ aux l
+    in
+    List.fold_left (fun acc x -> acc ^ f name x ^ "\n") "" applications
+
   let rec encode_applications : type a b. (a, b) Interpreter.args -> string list
       = function
     | Cons (x, xs) -> M.Encode.to_string x [] :: encode_applications xs

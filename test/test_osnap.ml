@@ -64,10 +64,34 @@ let test_create_snapshot_two () =
 
   Alcotest.(check string) "create snapshot" expected actual
 
+let test_fancy_show () =
+  let rand = Random.State.make [| 42; 9 |] in
+
+  let small_int =
+    Spec.{ gen = QCheck.Gen.small_int; printer = string_of_int }
+  in
+  let spec = Spec.(small_int ^> small_int ^>> string_of_int) in
+
+  let test = Test.(make ~count:5 ~path:"" ~name:"add" ~spec ( + )) in
+  let snapshot = Snapshot.make ~rand test in
+
+  let expected =
+    {|add 37 4 = 41
+add 56 45 = 101
+add 5 3 = 8
+add 8 67 = 75
+add 66 55 = 121
+|}
+  in
+  let actual = Snapshot.show @@ M.Snapshot.decode spec snapshot in
+
+  Alcotest.(check string) "fancy show" expected actual
+
 let tests =
   ( "Osnap",
     Alcotest.
       [
         test_case "create snapshot" `Quick test_create_snapshot_one;
         test_case "create snapshot" `Quick test_create_snapshot_two;
+        test_case "show fancy snapshot" `Quick test_fancy_show;
       ] )
