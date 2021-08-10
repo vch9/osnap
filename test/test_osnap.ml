@@ -87,6 +87,16 @@ add 37 4  41
 
   Alcotest.(check string) "fancy show" expected actual
 
+let test_run_error_same () =
+  let rand = Random.State.make [| 42; 9 |] in
+  let path = "./add.osnap" in
+  let test = Test.(make ~count:5 ~path ~name:"add" ~spec ( + )) in
+  let snapshot = Snapshot.make ~rand test in
+  let () = M.Snapshot.write path snapshot in
+
+  let actual = Osnap.Runner.(run_tests ~mode:Error [ test ]) in
+
+  Alcotest.(check int) "test run raises no error on same" 0 actual
 let tests =
   ( "Osnap",
     Alcotest.
@@ -94,4 +104,5 @@ let tests =
         test_case "create snapshot" `Quick test_create_snapshot_one;
         test_case "create snapshot" `Quick test_create_snapshot_two;
         test_case "show fancy snapshot" `Quick test_fancy_show;
+        test_case "run error same" `Quick test_run_error_same;
       ] )
