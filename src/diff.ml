@@ -42,8 +42,8 @@ let diff prev next =
   | None -> New next
   | Some prev -> (
       let open Patdiff_kernel.Diff_input in
-      let prev = { name = "TODO"; text = prev } in
-      let next = { name = "TODO"; text = next } in
+      let prev = { name = "prev"; text = prev } in
+      let next = { name = "next"; text = next } in
 
       match Patdiff__Compare_core.diff_strings ~prev ~next config with
       | `Same -> Same
