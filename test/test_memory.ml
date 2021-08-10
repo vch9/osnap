@@ -119,6 +119,16 @@ let test_read_none () =
   let b = M.Snapshot.read "" |> Option.is_none in
   Alcotest.(check bool) "read None = None" true b
 
+let test_write_read () =
+  let f = M.Encode.to_string in
+  let snapshot = M.Snapshot.build "add" [ [ f 0 []; f 1 []; f 2 [] ] ] in
+  let path = "./add.osnap" in
+  let () = M.Snapshot.write path snapshot in
+  let actual = Option.get @@ M.Snapshot.read path in
+
+  let b = actual = snapshot in
+  Alcotest.(check bool) "test write read" true b
+
 let tests =
   ( "Memory",
     Alcotest.
@@ -131,4 +141,5 @@ let tests =
         test_case "test decode with marshal args" `Quick test_decode_args;
         test_case "test read none" `Quick test_read_none;
         test_case "test decode applications" `Quick test_decode_applications;
+        test_case "test write read" `Quick test_write_read;
       ] )

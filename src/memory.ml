@@ -47,6 +47,11 @@ module Snapshot = struct
       Some x
     else None
 
+  let write path snapshot =
+    let oc = open_out path in
+    let () = Marshal.to_channel oc snapshot [] in
+    close_out oc
+
   let rec decode_aux : type a b. (a, b) Spec.t -> string list -> string list =
    fun spec l ->
     match (l, spec) with
