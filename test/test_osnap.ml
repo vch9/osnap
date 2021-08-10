@@ -51,13 +51,13 @@ let test_create_snapshot_two () =
   let spec = Spec.(int ^> int ^>> string_of_int) in
   let test = Test.(make ~count:2 ~path:"" ~name:"foo" ~spec ( + )) in
   let snapshot = Snapshot.make ~rand test in
-  let decoded_snapshot = M.Snapshot.decode spec snapshot in
+  let decoded_snapshot = M.Snapshot.decode_str spec snapshot in
 
   let expected =
     {|{ name = "foo";
   applications =
-  [["3306656436478733947"; "2323438535601724629"; "-3593277064774317232"];
-    ["-1045094426214325490"; "-2812697657021115463"; "-3857792083235440953"]]
+  [("3306656436478733947 2323438535601724629 ", "-3593277064774317232");
+    ("-1045094426214325490 -2812697657021115463 ", "-3857792083235440953")]
   }|}
   in
   let actual = M.Snapshot.show decoded_snapshot in
@@ -76,14 +76,14 @@ let test_fancy_show () =
   let snapshot = Snapshot.make ~rand test in
 
   let expected =
-    {|add 37 4 = 41
-add 56 45 = 101
-add 5 3 = 8
-add 8 67 = 75
-add 66 55 = 121
+    {|add 66 55  121
+add 8 67  75
+add 5 3  8
+add 56 45  101
+add 37 4  41
 |}
   in
-  let actual = Snapshot.show @@ M.Snapshot.decode spec snapshot in
+  let actual = Snapshot.show @@ M.Snapshot.decode_str spec snapshot in
 
   Alcotest.(check string) "fancy show" expected actual
 

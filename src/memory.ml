@@ -30,7 +30,7 @@ module Encode = struct
 end
 
 module Snapshot = struct
-  type t = { name : string; applications : string list list }
+  type t = { name : string; applications : (string * string) list }
   [@@deriving show { with_path = false }]
 
   let name x = x.name
@@ -52,18 +52,28 @@ module Snapshot = struct
     let () = Marshal.to_channel oc snapshot [] in
     close_out oc
 
-  let rec decode_aux : type a b. (a, b) Spec.t -> string list -> string list =
-   fun spec l ->
-    match (l, spec) with
-    | (x :: xs, Arrow ({ printer; _ }, spec)) ->
-        let x = Encode.from_string x in
-        printer x :: decode_aux spec xs
-    | ([ x ], Result printer) ->
-        let x = Encode.from_string x in
-        [ printer x ]
-    | _ -> []
+  let rec decode_str_aux :
+      type a b.
+      (a, b) Spec.t -> (a, b) Interpreter.args * string -> string * string =
+   fun spec (args, res) ->
+    let open Interpreter in
+    let open Spec in
+    match (args, spec) with
+    | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
+        let s = printer x in
+        let (x, y) : string * string = decode_str_aux ys (xs, res) in
+        (s ^ " " ^ x, y)
+    | (Nil, Result printer) ->
+        let x = Encode.from_string res in
+        ("", printer x)
+    | _ -> assert false
 
-  let decode spec snap =
-    let applications = snap.applications |> List.map (decode_aux spec) in
+  let decode_str spec snap =
+    let applications =
+      snap.applications
+      |> List.map (fun (x, y) ->
+             let x = Encode.from_string x in
+             decode_str_aux spec (x, y))
+    in
     { snap with applications }
 end

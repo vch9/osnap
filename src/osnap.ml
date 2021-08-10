@@ -48,20 +48,10 @@ module Snapshot = struct
     let name = M.Snapshot.name snapshot in
     let applications = M.Snapshot.applications snapshot in
 
-    let f n l =
-      let rec aux = function
-        | [ x ] -> "= " ^ x
-        | x :: xs -> x ^ " " ^ aux xs
-        | [] -> assert false
-      in
-      n ^ " " ^ aux l
-    in
-    List.fold_left (fun acc x -> acc ^ f name x ^ "\n") "" applications
-
-  let rec encode_applications : type a b. (a, b) Interpreter.args -> string list
-      = function
-    | Cons (x, xs) -> M.Encode.to_string x [] :: encode_applications xs
-    | _ -> []
+    List.fold_left
+      (fun acc (args, res) -> Printf.sprintf "%s %s %s\n%s" name args res acc)
+      ""
+      applications
 
   let make ?rand (Test { spec; f; count; name; _ }) =
     let spec_to_args =
@@ -74,7 +64,7 @@ module Snapshot = struct
       List.init count (fun _ ->
           let args = spec_to_args spec in
           let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
-          encode_applications args @ [ M.Encode.to_string res [] ])
+          (M.Encode.to_string args [], M.Encode.to_string res []))
     in
     M.Snapshot.build name applications
 end
