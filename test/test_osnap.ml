@@ -98,6 +98,26 @@ let test_run_error_same () =
   let actual = Osnap.Runner.(run_tests ~mode:Error [ test ]) in
 
   Alcotest.(check int) "test run raises no error on same" 0 actual
+
+let test_run_error_new () =
+  let rand = Random.State.make [| 42; 9 |] in
+  let test = Test.(make ~count:5 ~rand ~path:"" ~name:"add" ~spec ( + )) in
+
+  let msg =
+    {|Error: no previous snapshot, new:
+add 66 55  121
+add 8 67  75
+add 5 3  8
+add 56 45  101
+add 37 4  41
+|}
+  in
+
+  Alcotest.(
+    check_raises "test run raises error on new" (Failure msg) (fun () ->
+        let _ = Osnap.Runner.run_tests ~mode:Error [ test ] in
+        ()))
+
 let tests =
   ( "Osnap",
     Alcotest.
@@ -106,4 +126,5 @@ let tests =
         test_case "create snapshot" `Quick test_create_snapshot_two;
         test_case "show fancy snapshot" `Quick test_fancy_show;
         test_case "run error same" `Quick test_run_error_same;
+        test_case "run error new" `Quick test_run_error_new;
       ] )
