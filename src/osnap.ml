@@ -55,7 +55,7 @@ module Snapshot = struct
     | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
         let s = printer x in
         let (x, y) = decode_applications ys (xs, res) in
-        (s ^ " " ^ x, y)
+        (s ^ "\t" ^ x, y)
     | (Nil, Result printer) ->
         let x = M.Encode.from_string res in
         ("", printer x)
@@ -119,6 +119,40 @@ module Runner = struct
     | `Ignored of string
     | `Error of string * string ]
     list
+
+  let get_passed xs = List.filter (function `Passed _ -> true | _ -> false) xs
+
+  let get_promoted xs =
+    List.filter (function `Promoted _ -> true | _ -> false) xs
+
+  let get_ignored xs =
+    List.filter (function `Ignored _ -> true | _ -> false) xs
+
+  let get_errors xs = List.filter (function `Error _ -> true | _ -> false) xs
+
+  let print_error = function
+    | `Error (t, msg) -> Printf.printf "Error in test %s:\n%s\n" t msg
+    | _ -> assert false
+
+  let print_res xs =
+    let passed = get_passed xs in
+    let promoted = get_promoted xs in
+    let ignored = get_ignored xs in
+    let errors = get_errors xs in
+
+    let () = match errors with x :: _ -> print_error x | _ -> () in
+
+    Printf.printf
+      {|Recap:
+      %d passed
+      %d promoted
+      %d ignored
+      %d fails
+|}
+      (List.length passed)
+      (List.length promoted)
+      (List.length ignored)
+      (List.length errors)
 
   let input_msg () = Printf.printf "Do you want to promote these diff? [Y\\n]"
 
@@ -192,5 +226,8 @@ module Runner = struct
     in
     (res, status)
 
-  let run_tests ?(mode = Error) tests = run_tests_with_res mode tests |> snd
+  let run_tests ?(mode = Error) tests =
+    let (res, status) = run_tests_with_res mode tests in
+    let () = print_res res in
+    status
 end
