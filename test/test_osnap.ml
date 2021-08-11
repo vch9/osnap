@@ -115,8 +115,7 @@ add 37 4 41
 
   Alcotest.(
     check_raises "test run raises error on new" (Failure msg) (fun () ->
-        let _ = Osnap.Runner.run_tests ~mode:Error [ test ] in
-        ()))
+        Osnap.Runner.run_tests ~mode:Error [ test ] |> ignore))
 
 let tests =
   ( "Osnap",
