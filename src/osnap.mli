@@ -127,7 +127,7 @@ end
 (**/**)
 
 module Snapshot : sig
-  val show : Memory.Snapshot.t -> string
+  val show : ('a, 'b) Spec.t -> Memory.Snapshot.t -> string
 
   val make : ?rand:Random.State.t -> Test.t -> Memory.Snapshot.t
 end

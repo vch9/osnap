@@ -51,29 +51,4 @@ module Snapshot = struct
     let oc = open_out path in
     let () = Marshal.to_channel oc snapshot [] in
     close_out oc
-
-  let rec decode_str_aux :
-      type a b.
-      (a, b) Spec.t -> (a, b) Interpreter.args * string -> string * string =
-   fun spec (args, res) ->
-    let open Interpreter in
-    let open Spec in
-    match (args, spec) with
-    | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
-        let s = printer x in
-        let (x, y) : string * string = decode_str_aux ys (xs, res) in
-        (s ^ " " ^ x, y)
-    | (Nil, Result printer) ->
-        let x = Encode.from_string res in
-        ("", printer x)
-    | _ -> assert false
-
-  let decode_str spec snap =
-    let applications =
-      snap.applications
-      |> List.map (fun (x, y) ->
-             let x = Encode.from_string x in
-             decode_str_aux spec (x, y))
-    in
-    { snap with applications }
 end

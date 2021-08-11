@@ -45,10 +45,29 @@ module Snapshot = struct
   open Test
   module M = Memory
 
-  let show snapshot =
-    let name = M.Snapshot.name snapshot in
-    let applications = M.Snapshot.applications snapshot in
+  let rec decode_applications :
+      type a b.
+      (a, b) Spec.t -> (a, b) Interpreter.args * string -> string * string =
+   fun spec (args, res) ->
+    let open Interpreter in
+    let open Spec in
+    match (args, spec) with
+    | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
+        let s = printer x in
+        let (x, y) = decode_applications ys (xs, res) in
+        (s ^ " " ^ x, y)
+    | (Nil, Result printer) ->
+        let x = M.Encode.from_string res in
+        ("", printer x)
+    | _ -> assert false
 
+  let show spec snapshot =
+    let name = M.Snapshot.name snapshot in
+    let applications =
+      M.Snapshot.applications snapshot
+      |> List.map (fun (args, res) ->
+             decode_applications spec (M.Encode.from_string args, res))
+    in
     List.fold_left
       (fun acc (args, res) -> Printf.sprintf "%s %s%s\n%s" name args res acc)
       ""
@@ -141,12 +160,11 @@ module Runner = struct
     let prev_str =
       Option.fold
         ~none:None
-        ~some:(fun x ->
-          Option.some @@ Snapshot.show @@ Memory.Snapshot.decode_str spec x)
+        ~some:(fun x -> Option.some @@ Snapshot.show spec x)
         prev
     in
-    let next = Snapshot.next test prev |> Memory.Snapshot.decode_str spec in
-    let next_str = Snapshot.show next in
+    let next = Snapshot.next test prev in
+    let next_str = Snapshot.show spec next in
 
     let diff = Diff.diff prev_str next_str in
     match mode with

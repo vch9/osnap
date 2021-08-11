@@ -23,7 +23,7 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Spec = Osnap__Spec
+module Spec = Osnap.Spec
 module M = Osnap__Memory
 module Test = Osnap.Test
 module Snapshot = Osnap.Snapshot
@@ -38,14 +38,12 @@ let test_create_snapshot_one () =
   let spec = Spec.(int ^> int ^>> string_of_int) in
   let test = Test.(make ~count:1 ~path:"" ~name:"foo" ~spec ( + )) in
   let snapshot = Snapshot.make ~rand test in
-  let decoded_snapshot = M.Snapshot.decode_str spec snapshot in
 
   let expected =
-    {|{ name = "foo";
-  applications =
-  [("3306656436478733947 2323438535601724629 ", "-3593277064774317232")] }|}
+    {|foo 3306656436478733947 2323438535601724629 -3593277064774317232
+|}
   in
-  let actual = M.Snapshot.show decoded_snapshot in
+  let actual = Snapshot.show spec snapshot in
 
   Alcotest.(check string) "create snapshot" expected actual
 
@@ -55,16 +53,13 @@ let test_create_snapshot_two () =
   let spec = Spec.(int ^> int ^>> string_of_int) in
   let test = Test.(make ~count:2 ~path:"" ~name:"foo" ~spec ( + )) in
   let snapshot = Snapshot.make ~rand test in
-  let decoded_snapshot = M.Snapshot.decode_str spec snapshot in
 
   let expected =
-    {|{ name = "foo";
-  applications =
-  [("3306656436478733947 2323438535601724629 ", "-3593277064774317232");
-    ("-1045094426214325490 -2812697657021115463 ", "-3857792083235440953")]
-  }|}
+    {|foo -1045094426214325490 -2812697657021115463 -3857792083235440953
+foo 3306656436478733947 2323438535601724629 -3593277064774317232
+|}
   in
-  let actual = M.Snapshot.show decoded_snapshot in
+  let actual = Snapshot.show spec snapshot in
 
   Alcotest.(check string) "create snapshot" expected actual
 
@@ -84,7 +79,7 @@ add 56 45 101
 add 37 4 41
 |}
   in
-  let actual = Snapshot.show @@ M.Snapshot.decode_str spec snapshot in
+  let actual = Snapshot.show spec snapshot in
 
   Alcotest.(check string) "fancy show" expected actual
 
@@ -136,7 +131,7 @@ add 37 4 41
   in
   let actual =
     M.Snapshot.read path |> Option.get (* |> M.Snapshot.decode_str spec *)
-    |> Osnap.Snapshot.show
+    |> Osnap.Snapshot.show spec
   in
 
   Alcotest.(check string) "test run promote" expected actual
