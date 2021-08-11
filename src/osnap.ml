@@ -94,6 +94,30 @@ end
 module Runner = struct
   type mode = Interactive | Promote | Error
 
+  let input_msg () = Printf.printf "Do you want to promote these diff? [Y\\n]"
+
+  let rec take_input () =
+    match read_line () with
+    | "Y" | "" -> true
+    | "n" -> false
+    | _ ->
+        input_msg () ;
+        take_input ()
+
+  let interactive diff path snapshot =
+    match diff with
+    | Diff.Same -> ()
+    | _ ->
+        let msg =
+          match diff with
+          | Diff.(New s) -> s
+          | Diff.(Diff s) -> s
+          | _ -> assert false
+        in
+        let () = Printf.printf "%s" msg in
+        let () = input_msg () in
+        if take_input () then Memory.Snapshot.write path snapshot
+
   let error diff =
     match diff with
     | Diff.Same -> ()
@@ -128,7 +152,7 @@ module Runner = struct
     match mode with
     | Error -> error diff
     | Promote -> promote diff path next
-    | Interactive -> failwith "todo"
+    | Interactive -> interactive diff path next
 
   let run_tests ?(mode = Error) tests =
     let () = List.iter (run mode) tests in
