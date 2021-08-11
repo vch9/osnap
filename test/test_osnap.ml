@@ -32,6 +32,17 @@ let small_int = Spec.{ gen = QCheck.Gen.small_int; printer = string_of_int }
 
 let spec = Spec.(small_int ^> small_int ^>> string_of_int)
 
+let pp_res fmt =
+  let pp_aux fmt = function
+    | `Passed s -> Format.fprintf fmt "Passed %s" s
+    | `Promoted s -> Format.fprintf fmt "Promoted %s" s
+    | `Ignored s -> Format.fprintf fmt "Ignored %s" s
+    | `Error (s, s') -> Format.fprintf fmt "Error (%s, %s)" s s'
+  in
+  Format.pp_print_list pp_aux fmt
+
+let eq_res = Alcotest.of_pp pp_res
+
 let test_create_snapshot_one () =
   let rand = Random.State.make [| 42; 9 |] in
 
@@ -98,19 +109,23 @@ let test_run_error_new () =
   let rand = Random.State.make [| 42; 9 |] in
   let test = Test.(make ~count:5 ~rand ~path:"" ~name:"add" ~spec ( + )) in
 
-  let msg =
-    {|Error: no previous snapshot, new:
+  let expected =
+    [
+      `Error
+        ( "add",
+          {|Error: no previous snapshot, new:
 add 66 55 121
 add 8 67 75
 add 5 3 8
 add 56 45 101
 add 37 4 41
 |}
+        );
+    ]
   in
+  let actual = Osnap.Runner.(run_tests_with_res Error [ test ]) |> fst in
 
-  Alcotest.(
-    check_raises "test run raises error on new" (Failure msg) (fun () ->
-        Osnap.Runner.run_tests ~mode:Error [ test ] |> ignore))
+  Alcotest.check eq_res "run on new diff returns error" expected actual
 
 let test_run_promote () =
   let rand = Random.State.make [| 42; 9 |] in
@@ -119,22 +134,12 @@ let test_run_promote () =
   let () = if Sys.file_exists path then Sys.remove path in
 
   let test = Test.(make ~count:5 ~rand ~path ~name:"add" ~spec ( + )) in
-  let _ = Osnap.Runner.(run_tests ~mode:Promote [ test ]) in
 
-  let expected =
-    {|add 66 55 121
-add 8 67 75
-add 5 3 8
-add 56 45 101
-add 37 4 41
-|}
-  in
-  let actual =
-    M.Snapshot.read path |> Option.get (* |> M.Snapshot.decode_str spec *)
-    |> Osnap.Snapshot.show spec
-  in
+  let expected = [ `Promoted "add" ] in
 
-  Alcotest.(check string) "test run promote" expected actual
+  let actual = Osnap.Runner.(run_tests_with_res Promote [ test ]) |> fst in
+
+  Alcotest.check eq_res "run on promote returns promote" expected actual
 
 let tests =
   ( "Osnap",

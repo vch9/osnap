@@ -113,6 +113,13 @@ end
 module Runner = struct
   type mode = Interactive | Promote | Error
 
+  type res =
+    [ `Passed of string
+    | `Promoted of string
+    | `Ignored of string
+    | `Error of string * string ]
+    list
+
   let input_msg () = Printf.printf "Do you want to promote these diff? [Y\\n]"
 
   let rec take_input () =
@@ -123,9 +130,9 @@ module Runner = struct
         input_msg () ;
         take_input ()
 
-  let interactive diff path snapshot =
+  let interactive diff name path snapshot =
     match diff with
-    | Diff.Same -> ()
+    | Diff.Same -> `Passed name
     | _ ->
         let msg =
           match diff with
@@ -135,27 +142,32 @@ module Runner = struct
         in
         let () = Printf.printf "%s" msg in
         let () = input_msg () in
-        if take_input () then Memory.Snapshot.write path snapshot
+        if take_input () then
+          let () = Memory.Snapshot.write path snapshot in
+          `Promoted name
+        else `Ignored name
 
-  let error diff =
+  let error diff name =
     match diff with
-    | Diff.Same -> ()
+    | Diff.Same -> `Passed name
     | Diff.(New s) ->
         let msg = Printf.sprintf "Error: no previous snapshot, new:\n%s" s in
-        failwith msg
+        `Error (name, msg)
     | Diff.(Diff s) ->
         let msg =
           Printf.sprintf "Error: difference between old and new snapshot:\n%s" s
         in
-        failwith msg
+        `Error (name, msg)
 
-  let promote diff path snapshot =
+  let promote diff name path snapshot =
     match diff with
-    | Diff.Same -> ()
-    | Diff.(New _) | Diff.(Diff _) -> Memory.Snapshot.write path snapshot
+    | Diff.Same -> `Passed name
+    | Diff.(New _) | Diff.(Diff _) ->
+        let () = Memory.Snapshot.write path snapshot in
+        `Promoted name
 
   let run mode test =
-    let Test.(Test { spec; path; _ }) = test in
+    let Test.(Test { spec; path; name; _ }) = test in
     let prev = Memory.Snapshot.read path in
     let prev_str =
       Option.fold
@@ -168,11 +180,17 @@ module Runner = struct
 
     let diff = Diff.diff prev_str next_str in
     match mode with
-    | Error -> error diff
-    | Promote -> promote diff path next
-    | Interactive -> interactive diff path next
+    | Error -> error diff name
+    | Promote -> promote diff name path next
+    | Interactive -> interactive diff name path next
 
-  let run_tests ?(mode = Error) tests =
-    let () = List.iter (run mode) tests in
-    0
+  let run_tests_with_res mode tests : res * int =
+    let res = List.map (run mode) tests in
+    let status =
+      if List.exists (function `Error _ -> true | _ -> false) res then 1
+      else 0
+    in
+    (res, status)
+
+  let run_tests ?(mode = Error) tests = run_tests_with_res mode tests |> snd
 end

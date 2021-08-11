@@ -231,6 +231,19 @@ module Runner : sig
     | Promote  (** Promote mode, will promote every diff *)
     | Error  (** Error mode, raises error on diff *)
 
+  (**/**)
+
+  type res =
+    [ `Passed of string
+    | `Promoted of string
+    | `Ignored of string
+    | `Error of string * string ]
+    list
+
+  val run_tests_with_res : mode -> Test.t list -> res * int
+
+  (**/**)
+
   (** [run_tests tests] executes [tests], default mode is [Error]. *)
   val run_tests : ?mode:mode -> Test.t list -> int
 end
