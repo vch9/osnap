@@ -117,6 +117,30 @@ add 37 4 41
     check_raises "test run raises error on new" (Failure msg) (fun () ->
         Osnap.Runner.run_tests ~mode:Error [ test ] |> ignore))
 
+let test_run_promote () =
+  let rand = Random.State.make [| 42; 9 |] in
+  let path = "./add.osnap" in
+
+  let () = if Sys.file_exists path then Sys.remove path in
+
+  let test = Test.(make ~count:5 ~rand ~path ~name:"add" ~spec ( + )) in
+  let _ = Osnap.Runner.(run_tests ~mode:Promote [ test ]) in
+
+  let expected =
+    {|add 66 55 121
+add 8 67 75
+add 5 3 8
+add 56 45 101
+add 37 4 41
+|}
+  in
+  let actual =
+    M.Snapshot.read path |> Option.get (* |> M.Snapshot.decode_str spec *)
+    |> Osnap.Snapshot.show
+  in
+
+  Alcotest.(check string) "test run promote" expected actual
+
 let tests =
   ( "Osnap",
     Alcotest.
@@ -126,4 +150,5 @@ let tests =
         test_case "show fancy snapshot" `Quick test_fancy_show;
         test_case "run error same" `Quick test_run_error_same;
         test_case "run error new" `Quick test_run_error_new;
+        test_case "run promote" `Quick test_run_promote;
       ] )

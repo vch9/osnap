@@ -104,6 +104,11 @@ module Runner = struct
         in
         failwith msg
 
+  let promote diff path snapshot =
+    match diff with
+    | Diff.Same -> ()
+    | Diff.(New _) | Diff.(Diff _) -> Memory.Snapshot.write path snapshot
+
   let run mode test =
     let Test.(Test { spec; path; _ }) = test in
     let prev = Memory.Snapshot.read path in
@@ -120,7 +125,7 @@ module Runner = struct
     let diff = Diff.diff prev_str next_str in
     match mode with
     | Error -> error diff
-    | Promote -> failwith "todo"
+    | Promote -> promote diff path next
     | Interactive -> failwith "todo"
 
   let run_tests ?(mode = Error) tests =
