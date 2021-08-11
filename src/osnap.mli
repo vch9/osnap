@@ -49,6 +49,60 @@
     @see <https://github.com/janestreet/ppx_expect>
 *)
 
+(** Spec takes inspiration from OCaml's property-based testing library Monolith.
+    The idea is that the programmer describes the function specification through
+    the set of generators from QCheck and a printer.
+
+    Examples:
+
+    - Addition specification:
+
+    {[
+      let add = (+)
+      let spec_add = Spec.(int ^> int ^>> int)
+    ]}
+
+    - List sum specification:
+
+    {[
+      let sum = List.fold_left ( + )
+      let spec_sum = int ^>> int
+    ]}
+*)
+module Spec : sig
+  module Gen : sig
+    include module type of QCheck.Gen
+  end
+
+  (** ['a gen] is used to generate random values inside {!spec}.
+    QCheck combinators are available using [Spec.Gen]. *)
+  type 'a gen = 'a QCheck.Gen.t
+
+  (** ['a printer] is used to store randomly generated values *)
+  type 'a printer = 'a -> string
+
+  (** ['a spec] combines an ['a gen] and a printer *)
+  type 'a spec = { gen : 'a gen; printer : 'a printer }
+
+  (** [t] is the specification type, describing a function.
+    Thus [t] declaration must end with {! (^>>) }. *)
+  type ('fn, 'r) t =
+    | Result : 'a printer -> ('a, 'a) t
+    | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
+
+  (** [int] specification *)
+  val int : int spec
+
+  (** [list spec] creates a list spec for [spec] *)
+  val list : 'a spec -> 'a list spec
+
+  (** [(^>) x y] combines spec [x] and [y] to create [x -> y] *)
+  val ( ^> ) : 'a spec -> ('b, 'c) t -> ('a -> 'b, 'c) t
+
+  (** [(^>>) x res] combines a specification and printer for the result type *)
+  val ( ^>> ) : 'a spec -> 'b printer -> ('a -> 'b, 'b) t
+end
+
 module Test : sig
   type t
 

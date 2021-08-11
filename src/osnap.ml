@@ -23,6 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
+module Spec = Spec
+
 module Test = struct
   type ('a, 'b, 'c) cell = {
     path : string;
