@@ -23,54 +23,42 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Spec
-module Gen = Spec.Gen
+(** This module handles internal representation of function. We use
+    module {!Spec} to generate type {!args}. This last is latter on used
+    to evaluate function with these arguments using type {!expr}.
 
-(** [args] is an intern representation of function arguments *)
+    {!args} is encoded inside snapshots, values of types {!args} are used
+    to evaluate new function under test with the same arguments.
+*)
+
 type ('fn, 'r) args =
   | Nil : ('r, 'r) args
   | Cons : 'a * ('fn, 'r) args -> ('a -> 'fn, 'r) args
 
-(** [spec_to_args] instantiate arguments values using generators *)
-let rec spec_to_args : type a b. (a, b) Spec.t -> (a, b) args = function
-  | Result _ -> Nil
-  | Arrow ({ gen; _ }, spec) ->
-      let x = QCheck.Gen.generate1 gen in
-      Cons (x, spec_to_args spec)
+(** [spec_to_args spec] instantiate arguments values using generators inside [spec] *)
+val spec_to_args : ('a, 'b) Spec.t -> ('a, 'b) args
 
-(** [expr] is an intern representation of a function application *)
+(** [expr] is an intern representation of a function application,
+    Term inside [expr] are create using {!args}. *)
 type _ expr =
   | Apply : ('a -> 'b) expr * 'a expr -> 'b expr
   | Term : 'a -> 'a expr
   | Fun : ('a -> 'b) -> ('a -> 'b) expr
 
-let rec args_to_expr : type a b. a expr -> (a, b) args -> b expr =
- fun expr args ->
-  match args with
-  | Nil -> expr
-  | Cons (x, args) ->
-      let expr = Apply (expr, Term x) in
-      args_to_expr expr args
+(** [args_to_expr f args] create a function application representation using
+    type {!expr}. [f] must be a term [Fun f], the expression will then be
+    evaluated on that function [f] *)
+val args_to_expr : 'a expr -> ('a, 'b) args -> 'b expr
 
-(** [spec_to_expr spec f] transforms a {!Spec.t} to {!expr} *)
-let spec_to_expr spec f = spec_to_args spec |> args_to_expr (Fun f)
+(** [spec_to_expr spec] creates an {!expr} using {!spec_to_args} and {!args_to_expr} *)
+val spec_to_expr : ('a -> 'b, 'c) Spec.t -> ('a -> 'b) -> 'c expr
 
-(** [interpret expr] interprets [expr] by evaluating function applications *)
-let rec interpret : type a. a expr -> a = function
-  | Apply (f, x) -> (interpret f) (interpret x)
-  | Term x -> x
-  | Fun f -> f
+(** [interpret expr] evaluates [expr], providing the function a full aplication,
+    returning its result. *)
+val interpret : 'a expr -> 'a
 
 (**/**)
 
-module Internal_for_tests = struct
-  (** [spec_to_args] instantiate arguments values using generators *)
-  let rec spec_to_args :
-      type a b. Random.State.t -> (a, b) Spec.t -> (a, b) args =
-   fun rand spec ->
-    match spec with
-    | Result _ -> Nil
-    | Arrow ({ gen; _ }, spec) ->
-        let x = QCheck.Gen.generate1 ~rand gen in
-        Cons (x, spec_to_args rand spec)
+module Internal_for_tests : sig
+  val spec_to_args : Random.State.t -> ('a, 'b) Spec.t -> ('a, 'b) args
 end

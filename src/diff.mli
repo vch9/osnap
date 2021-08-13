@@ -23,54 +23,13 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Spec
-module Gen = Spec.Gen
+type t =
+  | Same  (** old and new version are equals *)
+  | Diff of string  (** difference between old and new *)
+  | New of string  (** only new version *)
 
-(** [args] is an intern representation of function arguments *)
-type ('fn, 'r) args =
-  | Nil : ('r, 'r) args
-  | Cons : 'a * ('fn, 'r) args -> ('a -> 'fn, 'r) args
+val pp : Format.formatter -> t -> unit
 
-(** [spec_to_args] instantiate arguments values using generators *)
-let rec spec_to_args : type a b. (a, b) Spec.t -> (a, b) args = function
-  | Result _ -> Nil
-  | Arrow ({ gen; _ }, spec) ->
-      let x = QCheck.Gen.generate1 gen in
-      Cons (x, spec_to_args spec)
-
-(** [expr] is an intern representation of a function application *)
-type _ expr =
-  | Apply : ('a -> 'b) expr * 'a expr -> 'b expr
-  | Term : 'a -> 'a expr
-  | Fun : ('a -> 'b) -> ('a -> 'b) expr
-
-let rec args_to_expr : type a b. a expr -> (a, b) args -> b expr =
- fun expr args ->
-  match args with
-  | Nil -> expr
-  | Cons (x, args) ->
-      let expr = Apply (expr, Term x) in
-      args_to_expr expr args
-
-(** [spec_to_expr spec f] transforms a {!Spec.t} to {!expr} *)
-let spec_to_expr spec f = spec_to_args spec |> args_to_expr (Fun f)
-
-(** [interpret expr] interprets [expr] by evaluating function applications *)
-let rec interpret : type a. a expr -> a = function
-  | Apply (f, x) -> (interpret f) (interpret x)
-  | Term x -> x
-  | Fun f -> f
-
-(**/**)
-
-module Internal_for_tests = struct
-  (** [spec_to_args] instantiate arguments values using generators *)
-  let rec spec_to_args :
-      type a b. Random.State.t -> (a, b) Spec.t -> (a, b) args =
-   fun rand spec ->
-    match spec with
-    | Result _ -> Nil
-    | Arrow ({ gen; _ }, spec) ->
-        let x = QCheck.Gen.generate1 ~rand gen in
-        Cons (x, spec_to_args rand spec)
-end
+(** [diff prev next] computes diff between [prev] and [next] using Patdiff
+    If prev is absent, returns [New [next]] *)
+val diff : string option -> string -> t

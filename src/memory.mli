@@ -23,54 +23,34 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Spec
-module Gen = Spec.Gen
+module Encode : sig
+  (** [to_string x] encodes [x] using Marshal *)
+  val to_string : 'a -> Marshal.extern_flags list -> string
 
-(** [args] is an intern representation of function arguments *)
-type ('fn, 'r) args =
-  | Nil : ('r, 'r) args
-  | Cons : 'a * ('fn, 'r) args -> ('a -> 'fn, 'r) args
+  (** [from_string x] decodes [x] using Marshal *)
+  val from_string : string -> 'a
+end
 
-(** [spec_to_args] instantiate arguments values using generators *)
-let rec spec_to_args : type a b. (a, b) Spec.t -> (a, b) args = function
-  | Result _ -> Nil
-  | Arrow ({ gen; _ }, spec) ->
-      let x = QCheck.Gen.generate1 gen in
-      Cons (x, spec_to_args spec)
+module Snapshot : sig
+  type t = {
+    name : string;  (** snapshot name *)
+    applications : (string * string) list;
+        (** list of args * result, encoded in binary *)
+  }
 
-(** [expr] is an intern representation of a function application *)
-type _ expr =
-  | Apply : ('a -> 'b) expr * 'a expr -> 'b expr
-  | Term : 'a -> 'a expr
-  | Fun : ('a -> 'b) -> ('a -> 'b) expr
+  val pp : Format.formatter -> t -> unit
 
-let rec args_to_expr : type a b. a expr -> (a, b) args -> b expr =
- fun expr args ->
-  match args with
-  | Nil -> expr
-  | Cons (x, args) ->
-      let expr = Apply (expr, Term x) in
-      args_to_expr expr args
+  val show : t -> string
 
-(** [spec_to_expr spec f] transforms a {!Spec.t} to {!expr} *)
-let spec_to_expr spec f = spec_to_args spec |> args_to_expr (Fun f)
+  val name : t -> string
 
-(** [interpret expr] interprets [expr] by evaluating function applications *)
-let rec interpret : type a. a expr -> a = function
-  | Apply (f, x) -> (interpret f) (interpret x)
-  | Term x -> x
-  | Fun f -> f
+  val applications : t -> (string * string) list
 
-(**/**)
+  val build : string -> (string * string) list -> t
 
-module Internal_for_tests = struct
-  (** [spec_to_args] instantiate arguments values using generators *)
-  let rec spec_to_args :
-      type a b. Random.State.t -> (a, b) Spec.t -> (a, b) args =
-   fun rand spec ->
-    match spec with
-    | Result _ -> Nil
-    | Arrow ({ gen; _ }, spec) ->
-        let x = QCheck.Gen.generate1 ~rand gen in
-        Cons (x, spec_to_args rand spec)
+  (** [read path] reads snapshot at [path], returns None when path does not exists *)
+  val read : string -> t option
+
+  (** [write path snapshot] writes [snapshot] at [path] *)
+  val write : string -> t -> unit
 end

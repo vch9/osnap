@@ -33,14 +33,14 @@
 
     {[
       let add = (+)
-      let spec_add = Spec.(int ^> int ^>> int)
+      let spec_add = Spec.(int ^> int ^>> string_of_int)
     ]}
 
     - List sum specification:
 
     {[
       let sum = List.fold_left ( + )
-      let spec_sum = int ^>> int
+      let spec_sum = list int ^>> string_of_int
     ]}
  *)
 

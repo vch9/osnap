@@ -24,10 +24,9 @@
 (*****************************************************************************)
 
 type t =
-  | Same (** old and new version are equals *)
-  | Diff of string (** difference between old and new *)
-  | New of string (** only new version *)
-[@@ocamlformat "disable"]
+  | Same  (** old and new version are equals *)
+  | Diff of string  (** difference between old and new *)
+  | New of string  (** only new version *)
 
 let pp fmt = function
   | Same -> Format.pp_print_string fmt "Same"

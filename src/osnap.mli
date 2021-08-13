@@ -27,29 +27,38 @@
 
 (** The library takes inspiration from ppx_expect, we add random generators
     to store random application of functions. A snapshot will be the random
-    applications on a function with its, the snapshot will be latter use to
-    diff between old and new version of a function.
+    applications on a function, the snapshot will be latter use to look for
+    diffs between old and new version of a function.
+
+    - {!Spec} is used to give a function specification. {!Spec} provides
+      combinator to describe function generators and printer.
+
+    Example:
+    
+    {[
+      let spec_add = Osnap.Spec.(int ^> int ^>> string_of_int)
+    ]}
 
     - {!Test} is used to describe a single test, that is, where the snapshot
       will be stored and the function under test with its specification.
 
     Example:
 
-    - Test addition:
-
     {[
       let test =
-        let spec = OSnap.Spec.(int ^> int ^>> int) in
+        let spec = Osnap.Spec.(int ^> int ^>> int) in
         Osnap.Test.make ~path:".osnap/add" ~spec (+)
     ]}
     
 
-    - {!Runner} is used to run tests
+    - {!Runner} is used to run tests.
 
     @see <https://github.com/janestreet/ppx_expect>
 *)
 
-(** Spec takes inspiration from OCaml's property-based testing library Monolith.
+(** {2 Specifying function specification }
+
+    Spec takes inspiration from OCaml's property-based testing library Monolith.
     The idea is that the programmer describes the function specification through
     the set of generators from QCheck and a printer.
 
@@ -59,49 +68,24 @@
 
     {[
       let add = (+)
-      let spec_add = Spec.(int ^> int ^>> int)
+      let spec_add = Spec.(int ^> int ^>> string_of_int)
     ]}
 
     - List sum specification:
 
     {[
       let sum = List.fold_left ( + )
-      let spec_sum = int ^>> int
+      let spec_sum = list int ^>> string_of_int
     ]}
 *)
+
 module Spec : sig
-  module Gen : sig
-    include module type of QCheck.Gen
-  end
-
-  (** ['a gen] is used to generate random values inside {!spec}.
-    QCheck combinators are available using [Spec.Gen]. *)
-  type 'a gen = 'a QCheck.Gen.t
-
-  (** ['a printer] is used to store randomly generated values *)
-  type 'a printer = 'a -> string
-
-  (** ['a spec] combines an ['a gen] and a printer *)
-  type 'a spec = { gen : 'a gen; printer : 'a printer }
-
-  (** [t] is the specification type, describing a function.
-    Thus [t] declaration must end with {! (^>>) }. *)
-  type ('fn, 'r) t =
-    | Result : 'a printer -> ('a, 'a) t
-    | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
-
-  (** [int] specification *)
-  val int : int spec
-
-  (** [list spec] creates a list spec for [spec] *)
-  val list : 'a spec -> 'a list spec
-
-  (** [(^>) x y] combines spec [x] and [y] to create [x -> y] *)
-  val ( ^> ) : 'a spec -> ('b, 'c) t -> ('a -> 'b, 'c) t
-
-  (** [(^>>) x res] combines a specification and printer for the result type *)
-  val ( ^>> ) : 'a spec -> 'b printer -> ('a -> 'b, 'b) t
+  include module type of Spec
 end
+
+(** {2 Test creation }
+
+*)
 
 module Test : sig
   type t
@@ -134,10 +118,9 @@ end
 
 (**/**)
 
-(** {2 Runner test}
+(** {2 Runner}
 
-    Runner has tree mode:
-    
+   Runner has tree mode: 
     - Interactive:
 
     Interactive mode provides an interactive runner, displaying differences between
@@ -148,12 +131,12 @@ end
 
     {[
       let test =
-        let spec = OSnap.Spec.(int ^> int ^>> int) in
+        let spec = OSnap.Spec.(int ^> int ^>> string_of_int) in
         Osnap.Test.make ~count:1 ~path:".osnap/add" ~spec (+)
 
       (* .osnap/add:
 
-         f 5 6 = 11; *)
+         f 5 6 = 11 *)
 
       (* Then, the function under test is updated *)
       let test =
@@ -222,8 +205,8 @@ end
          +| f 5 6 = 0
       *)
     ]}
-
 *)
+
 module Runner : sig
   type mode =
     | Interactive
