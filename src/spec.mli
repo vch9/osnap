@@ -64,8 +64,29 @@ type ('fn, 'r) t =
   | Result : 'a printer -> ('a, 'a) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
+(** [unit] specification *)
+val unit : unit spec
+
+(** [bool] specification *)
+val bool : bool spec
+
+(** [float] specification *)
+val float : float spec
+
 (** [int] specification *)
 val int : int spec
+
+(** [char] specification *)
+val char : char spec
+
+(** [string] specification *)
+val string : string spec
+
+(** [option spec] creates an option spec for [spec] *)
+val option : 'a spec -> 'a option spec
+
+(** [array spec] creates an array spec for [spec] *)
+val array : 'a spec -> 'a array spec
 
 (** [list spec] creates a list spec for [spec] *)
 val list : 'a spec -> 'a list spec

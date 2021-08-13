@@ -35,7 +35,23 @@ type ('fn, 'r) t =
   | Result : 'a printer -> ('a, 'a) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
-let int = { gen = Gen.int; printer = string_of_int }
+let unit = { gen = Gen.unit; printer = Unit.to_string }
+
+let bool = { gen = Gen.bool; printer = Bool.to_string }
+
+let int = { gen = Gen.int; printer = Int.to_string }
+
+let float = { gen = Gen.float; printer = Float.to_string }
+
+let char = { gen = Gen.char; printer = Format.sprintf "%c" }
+
+let string = { gen = Gen.string; printer = (fun x -> x) }
+
+let option spec =
+  {
+    gen = Gen.opt spec.gen;
+    printer = Option.fold ~none:"None" ~some:spec.printer;
+  }
 
 let printer_list f l =
   let rec printer_elements = function
@@ -44,6 +60,12 @@ let printer_list f l =
     | x :: xs -> Printf.sprintf "%s , %s" (f x) (printer_elements xs)
   in
   Printf.sprintf "[%s]" (printer_elements l)
+
+let array spec =
+  {
+    gen = Gen.array spec.gen;
+    printer = (fun x -> Array.to_list x |> printer_list spec.printer);
+  }
 
 let list spec =
   let printer = printer_list spec.printer in
