@@ -227,6 +227,10 @@ module Runner : sig
 
   (**/**)
 
-  (** [run_tests tests] executes [tests], default mode is [Error]. *)
+  (** [run_tests tests] runs suite of [tests] and print its results,
+      default mode is [Error].
+
+      @return an error code, [0] if all tests passed, [1] otherwise
+      *)
   val run_tests : ?mode:mode -> Test.t list -> int
 end
