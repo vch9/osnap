@@ -56,13 +56,19 @@ type 'a gen = 'a QCheck.Gen.t
 type 'a printer = 'a -> string
 
 (** ['a spec] combines an ['a gen] and a printer *)
-type 'a spec = { gen : 'a gen; printer : 'a printer }
+type 'a spec = { gen : 'a gen; printer : 'a printer option }
 
 (** [t] is the specification type, describing a function.
     Thus [t] declaration must end with {! (^>>) }. *)
 type ('fn, 'r) t =
   | Result : 'a printer -> ('a, 'a) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
+
+(** [default_printer printer] creates a default printer if [printer] is absent *)
+val default_printer : ('a -> string) option -> 'a -> string
+
+(** [of_gen gen] creates an ['a spec] with no printer *)
+val of_gen : 'a gen -> 'a spec
 
 (** [unit] specification *)
 val unit : unit spec

@@ -53,7 +53,7 @@ module Snapshot = struct
     let open Spec in
     match (args, spec) with
     | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
-        let s = printer x in
+        let s = (default_printer printer) x in
         let (x, y) = decode_applications ys (xs, res) in
         ("  " ^ s ^ x, y)
     | (Nil, Result printer) ->
@@ -210,6 +210,7 @@ module Runner = struct
         ~some:(fun x -> Option.some @@ Snapshot.show spec x)
         prev
     in
+
     let next = Snapshot.next test prev in
     let next_str = Snapshot.show spec next in
 

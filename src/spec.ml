@@ -29,29 +29,36 @@ type 'a gen = 'a Gen.t
 
 type 'a printer = 'a -> string
 
-type 'a spec = { gen : 'a gen; printer : 'a printer }
+type 'a spec = { gen : 'a gen; printer : 'a printer option }
 
 type ('fn, 'r) t =
   | Result : 'a printer -> ('a, 'a) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
-let unit = { gen = Gen.unit; printer = Unit.to_string }
+let default_printer printer =
+  Option.value ~default:(fun _ -> "<opaque>") printer
 
-let bool = { gen = Gen.bool; printer = Bool.to_string }
+let of_gen gen = { gen; printer = None }
 
-let int = { gen = Gen.int; printer = Int.to_string }
+let unit = { gen = Gen.unit; printer = Some Unit.to_string }
 
-let float = { gen = Gen.float; printer = Float.to_string }
+let bool = { gen = Gen.bool; printer = Some Bool.to_string }
 
-let char = { gen = Gen.char; printer = Format.sprintf "%c" }
+let int = { gen = Gen.int; printer = Some Int.to_string }
 
-let string = { gen = Gen.string; printer = (fun x -> x) }
+let float = { gen = Gen.float; printer = Some Float.to_string }
+
+let char = { gen = Gen.char; printer = Some (Format.sprintf "%c") }
+
+let string = { gen = Gen.string; printer = Some (fun x -> x) }
 
 let option spec =
-  {
-    gen = Gen.opt spec.gen;
-    printer = Option.fold ~none:"None" ~some:spec.printer;
-  }
+  let printer x =
+    let f = default_printer spec.printer in
+    match x with Some x -> Printf.sprintf "Some (%s)" (f x) | None -> "None"
+  in
+
+  { gen = Gen.opt spec.gen; printer = Some printer }
 
 let printer_list f l =
   let rec printer_elements = function
@@ -62,13 +69,13 @@ let printer_list f l =
   Printf.sprintf "[%s]" (printer_elements l)
 
 let array spec =
-  {
-    gen = Gen.array spec.gen;
-    printer = (fun x -> Array.to_list x |> printer_list spec.printer);
-  }
+  let printer x =
+    Array.to_list x |> printer_list (default_printer spec.printer)
+  in
+  { gen = Gen.array spec.gen; printer = Some printer }
 
 let list spec =
-  let printer = printer_list spec.printer in
+  let printer = printer_list (default_printer spec.printer) |> Option.some in
   let gen = Gen.list spec.gen in
   { gen; printer }
 

@@ -29,7 +29,7 @@ module Gen = Osnap__Spec.Gen
 
 let spec_n n =
   let gen = Gen.pure n in
-  let printer = string_of_int in
+  let printer = Some string_of_int in
   { gen; printer }
 
 let zero = spec_n 0
