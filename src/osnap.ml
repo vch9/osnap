@@ -132,7 +132,14 @@ module Runner = struct
   let get_errors xs = List.filter (function `Error _ -> true | _ -> false) xs
 
   let print_error = function
-    | `Error (t, msg) -> Printf.printf "Error in test %s:\n%s\n" t msg
+    | `Error (t, msg) ->
+        Printf.sprintf
+          {|failure ==========================================================================
+Error in test %s:
+%s
+    |}
+          t
+          msg
     | _ -> assert false
 
   let print_res xs =
@@ -141,19 +148,33 @@ module Runner = struct
     let ignored = get_ignored xs in
     let errors = get_errors xs in
 
-    let () = match errors with x :: _ -> print_error x | _ -> () in
+    let error_msg = match errors with x :: _ -> print_error x | _ -> "" in
+    let res_msg =
+      let rans =
+        Printf.sprintf
+          "ran %d test(s): %s%s%s%s"
+          (List.length xs)
+          (let n = List.length passed in
+           if n > 0 then Printf.sprintf "%d passed" n else "")
+          (let n = List.length errors in
+           if n > 0 then Printf.sprintf "%d error(s)" n else "")
+          (let n = List.length promoted in
+           if n > 0 then Printf.sprintf "%d promoted" n else "")
+          (let n = List.length ignored in
+           if n > 0 then Printf.sprintf "%d ignored" n else "")
+      in
+
+      if List.length errors > 0 then Printf.sprintf "failure (%s)" rans
+      else Printf.sprintf "success (%s)" rans
+    in
 
     Printf.printf
-      {|Recap:
-      %d passed
-      %d promoted
-      %d ignored
-      %d fails
-|}
-      (List.length passed)
-      (List.length promoted)
-      (List.length ignored)
-      (List.length errors)
+      {|%s
+================================================================================
+%s
+    |}
+      error_msg
+      res_msg
 
   let input_msg () = Printf.printf "Do you want to promote these diff? [Y\\n]"
 
@@ -188,11 +209,7 @@ module Runner = struct
     | Diff.(New s) ->
         let msg = Printf.sprintf "Error: no previous snapshot, new:\n%s" s in
         `Error (name, msg)
-    | Diff.(Diff s) ->
-        let msg =
-          Printf.sprintf "Error: difference between old and new snapshot:\n%s" s
-        in
-        `Error (name, msg)
+    | Diff.(Diff s) -> `Error (name, s)
 
   let promote diff name path snapshot =
     match diff with
