@@ -55,7 +55,7 @@ module Snapshot = struct
     | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
         let s = printer x in
         let (x, y) = decode_applications ys (xs, res) in
-        (s ^ "\t" ^ x, y)
+        ("  " ^ s ^ x, y)
     | (Nil, Result printer) ->
         let x = M.Encode.from_string res in
         ("", printer x)
@@ -69,7 +69,7 @@ module Snapshot = struct
              decode_applications spec (M.Encode.from_string args, res))
     in
     List.fold_left
-      (fun acc (args, res) -> Printf.sprintf "%s %s%s\n%s" name args res acc)
+      (fun acc (args, res) -> Printf.sprintf "%s%s  =>  %s\n%s" name args res acc)
       ""
       applications
 

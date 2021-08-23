@@ -51,7 +51,7 @@ let test_create_snapshot_one () =
   let snapshot = Snapshot.make ~rand test in
 
   let expected =
-    {|foo 3306656436478733947 2323438535601724629 -3593277064774317232
+{|foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
 |}
   in
   let actual = Snapshot.show spec snapshot in
@@ -66,8 +66,8 @@ let test_create_snapshot_two () =
   let snapshot = Snapshot.make ~rand test in
 
   let expected =
-    {|foo -1045094426214325490 -2812697657021115463 -3857792083235440953
-foo 3306656436478733947 2323438535601724629 -3593277064774317232
+  {|foo  -1045094426214325490  -2812697657021115463  =>  -3857792083235440953
+foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
 |}
   in
   let actual = Snapshot.show spec snapshot in
@@ -83,11 +83,11 @@ let test_fancy_show () =
   let snapshot = Snapshot.make ~rand test in
 
   let expected =
-    {|add 66 55 121
-add 8 67 75
-add 5 3 8
-add 56 45 101
-add 37 4 41
+    {|add  66  55  =>  121
+add  8  67  =>  75
+add  5  3  =>  8
+add  56  45  =>  101
+add  37  4  =>  41
 |}
   in
   let actual = Snapshot.show spec snapshot in
@@ -114,11 +114,11 @@ let test_run_error_new () =
       `Error
         ( "add",
           {|Error: no previous snapshot, new:
-add 66 55 121
-add 8 67 75
-add 5 3 8
-add 56 45 101
-add 37 4 41
+add  66  55  =>  121
+add  8  67  =>  75
+add  5  3  =>  8
+add  56  45  =>  101
+add  37  4  =>  41
 |}
         );
     ]
