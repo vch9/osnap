@@ -52,7 +52,7 @@ let test_create_snapshot_one () =
   let snapshot = Snapshot.make ~rand test in
 
   let expected =
-{|foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
+    {|foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
 |}
   in
   let actual = Snapshot.show spec snapshot in
@@ -67,7 +67,7 @@ let test_create_snapshot_two () =
   let snapshot = Snapshot.make ~rand test in
 
   let expected =
-  {|foo  -1045094426214325490  -2812697657021115463  =>  -3857792083235440953
+    {|foo  -1045094426214325490  -2812697657021115463  =>  -3857792083235440953
 foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
 |}
   in
@@ -124,7 +124,9 @@ add  37  4  =>  41
         );
     ]
   in
-  let actual = Osnap.Runner.(run_tests_with_res Error [ test ]) |> fst in
+  let actual =
+    Osnap.Runner.(run_tests_with_res Error Format.std_formatter [ test ]) |> fst
+  in
 
   Alcotest.check eq_res "run on new diff returns error" expected actual
 
@@ -138,7 +140,10 @@ let test_run_promote () =
 
   let expected = [ `Promoted "add" ] in
 
-  let actual = Osnap.Runner.(run_tests_with_res Promote [ test ]) |> fst in
+  let actual =
+    Osnap.Runner.(run_tests_with_res Promote Format.std_formatter [ test ])
+    |> fst
+  in
 
   Alcotest.check eq_res "run on promote returns promote" expected actual
 

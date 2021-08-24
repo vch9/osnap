@@ -131,62 +131,70 @@ module Runner = struct
 
   let get_errors xs = List.filter (function `Error _ -> true | _ -> false) xs
 
-  let print_error = function
-    | `Error (t, msg) ->
-        Printf.sprintf
-          {|failure ==========================================================================
-Error in test %s:
-%s
-    |}
-          t
-          msg
-    | _ -> assert false
+  let sep = String.make 68 '-'
 
-  let print_res xs =
+  let pp_error fmt = function
+    | `Error (_, x) ->
+        Format.fprintf fmt "@.--- %s %s@.@.%s@.@." "Failure" sep x
+    | _ -> ()
+
+  let pp_recap fmt passed promoted ignored errors =
+    let open Format in
+    let n =
+      List.(length passed + length promoted + length ignored + length errors)
+    in
+    let strs =
+      [
+        (let n = List.length passed in
+         if n > 0 then Option.some @@ Printf.sprintf "%d passed" n else None);
+        (let n = List.length errors in
+         if n > 0 then Option.some @@ Printf.sprintf "%d error(s)" n else None);
+        (let n = List.length promoted in
+         if n > 0 then Option.some @@ Printf.sprintf "%d promoted" n else None);
+        (let n = List.length ignored in
+         if n > 0 then Option.some @@ Printf.sprintf "%d ignored" n else None);
+      ]
+      |> List.filter_map (fun x -> x)
+    in
+
+    let pp_aux fmt strs =
+      pp_print_list
+        ~pp_sep:(fun fmt () -> pp_print_string fmt ", ")
+        pp_print_string
+        fmt
+        strs
+    in
+
+    let res = if List.length errors > 0 then "failure" else "success" in
+
+    fprintf fmt "---%s@.%s: ran %d tests (%a)@." sep res n pp_aux strs
+
+  let pp_res fmt xs =
     let passed = get_passed xs in
     let promoted = get_promoted xs in
     let ignored = get_ignored xs in
     let errors = get_errors xs in
 
-    let error_msg = match errors with x :: _ -> print_error x | _ -> "" in
-    let res_msg =
-      let rans =
-        Printf.sprintf
-          "ran %d test(s): %s%s%s%s"
-          (List.length xs)
-          (let n = List.length passed in
-           if n > 0 then Printf.sprintf "%d passed" n else "")
-          (let n = List.length errors in
-           if n > 0 then Printf.sprintf "%d error(s)" n else "")
-          (let n = List.length promoted in
-           if n > 0 then Printf.sprintf "%d promoted" n else "")
-          (let n = List.length ignored in
-           if n > 0 then Printf.sprintf "%d ignored" n else "")
-      in
+    let () = match errors with x :: _ -> pp_error fmt x | _ -> () in
 
-      if List.length errors > 0 then Printf.sprintf "failure (%s)" rans
-      else Printf.sprintf "success (%s)" rans
-    in
+    pp_recap fmt passed promoted ignored errors
 
-    Printf.printf
-      {|%s
-================================================================================
-%s
-    |}
-      error_msg
-      res_msg
+  let input_msg fmt () =
+    let open Format in
+    fprintf
+      fmt
+      "@.@.%a@."
+      pp_print_string
+      "Do you want to promote these diff? [Y\\n]"
 
-  let input_msg () = Printf.printf "Do you want to promote these diff? [Y\\n]"
-
-  let rec take_input () =
+  let rec take_input fmt () =
+    let () = input_msg fmt () in
     match read_line () with
     | "Y" | "" -> true
     | "n" -> false
-    | _ ->
-        input_msg () ;
-        take_input ()
+    | _ -> take_input fmt ()
 
-  let interactive diff name path snapshot =
+  let interactive fmt diff name path snapshot =
     match diff with
     | Diff.Same -> `Passed name
     | _ ->
@@ -196,9 +204,8 @@ Error in test %s:
           | Diff.(Diff s) -> s
           | _ -> assert false
         in
-        let () = Printf.printf "%s" msg in
-        let () = input_msg () in
-        if take_input () then
+        let () = Format.pp_print_string fmt msg in
+        if take_input fmt () then
           let () = Memory.Snapshot.write path snapshot in
           `Promoted name
         else `Ignored name
@@ -218,7 +225,7 @@ Error in test %s:
         let () = Memory.Snapshot.write path snapshot in
         `Promoted name
 
-  let run mode test =
+  let run mode fmt test =
     let Test.(Test { spec; path; name; _ }) = test in
     let prev = Memory.Snapshot.read path in
     let prev_str =
@@ -235,18 +242,18 @@ Error in test %s:
     match mode with
     | Error -> error diff name
     | Promote -> promote diff name path next
-    | Interactive -> interactive diff name path next
+    | Interactive -> interactive fmt diff name path next
 
-  let run_tests_with_res mode tests : res * int =
-    let res = List.map (run mode) tests in
+  let run_tests_with_res mode out tests : res * int =
+    let res = List.map (run mode out) tests in
     let status =
       if List.exists (function `Error _ -> true | _ -> false) res then 1
       else 0
     in
     (res, status)
 
-  let run_tests ?(mode = Error) tests =
-    let (res, status) = run_tests_with_res mode tests in
-    let () = print_res res in
+  let run_tests ?(mode = Error) ?(out = Format.std_formatter) tests =
+    let (res, status) = run_tests_with_res mode out tests in
+    let () = pp_res out res in
     status
 end

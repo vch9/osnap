@@ -223,14 +223,14 @@ module Runner : sig
     | `Error of string * string ]
     list
 
-  val run_tests_with_res : mode -> Test.t list -> res * int
+  val run_tests_with_res : mode -> Format.formatter -> Test.t list -> res * int
 
   (**/**)
 
-  (** [run_tests tests] runs suite of [tests] and print its results,
-      default mode is [Error].
+  (** [run_tests tests] runs suite of [tests] and print its results
 
       @return an error code, [0] if all tests passed, [1] otherwise
+      @param mode default is Error
       *)
-  val run_tests : ?mode:mode -> Test.t list -> int
+  val run_tests : ?mode:mode -> ?out:Format.formatter -> Test.t list -> int
 end
