@@ -111,6 +111,21 @@ module Snapshot = struct
         M.Snapshot.build name new_applications
 end
 
+module Color = struct
+  type color = [ `Red | `Green ]
+
+  let int_of_color = function `Red -> 1 | `Green -> 2
+
+  let pp_str ?(bold = false) fmt (color : color) s =
+    let open Format in
+    let n = int_of_color color in
+    let () =
+      if bold then fprintf fmt "\x1b[3%d;1m" n else fprintf fmt "\x1b[3%dm" n
+    in
+    let () = pp_print_string fmt s in
+    fprintf fmt "\x1b[0m"
+end
+
 module Runner = struct
   type mode = Interactive | Promote | Error
 
@@ -133,9 +148,13 @@ module Runner = struct
 
   let sep = String.make 68 '-'
 
+  let pp_failure fmt () = Color.(pp_str ~bold:true fmt `Red "failure")
+
+  let pp_success fmt () = Color.(pp_str fmt `Green "success")
+
   let pp_error fmt = function
     | `Error (_, x) ->
-        Format.fprintf fmt "@.--- %s %s@.@.%s@.@." "Failure" sep x
+        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure () sep x
     | _ -> ()
 
   let pp_recap fmt passed promoted ignored errors =
@@ -165,9 +184,20 @@ module Runner = struct
         strs
     in
 
-    let res = if List.length errors > 0 then "failure" else "success" in
+    let pp_res fmt errors =
+      if List.length errors > 0 then pp_failure fmt () else pp_success fmt ()
+    in
 
-    fprintf fmt "---%s@.%s: ran %d tests (%a)@." sep res n pp_aux strs
+    fprintf
+      fmt
+      "-----------%s@.%a: ran %d test%s (%a)@."
+      sep
+      pp_res
+      errors
+      n
+      (if n = 1 then "" else "s")
+      pp_aux
+      strs
 
   let pp_res fmt xs =
     let passed = get_passed xs in
