@@ -235,4 +235,16 @@ module Runner : sig
       *)
   val run_tests :
     ?mode:mode -> ?out:Format.formatter -> ?color:bool -> Test.t list -> int
+
+  (** [run_tests_main] can be used as the main function of a test file. Exits
+    with a non-0 code if the tests fail. It refers to {!run_tests} for
+    actually running tests after a CLI options have been parsed
+
+
+      The available options are:
+
+      - "--mode <m>" (or "-m <m>") for running mode
+      - "--color <b>" (or "-c" <b>) for activating colors
+  *)
+  val run_tests_main : ?argv:string array -> Test.t list -> 'a
 end

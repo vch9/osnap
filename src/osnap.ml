@@ -129,6 +129,13 @@ end
 module Runner = struct
   type mode = Interactive | Promote | Error
 
+  let mode_from_string s =
+    let s = String.lowercase_ascii s in
+    match s with
+    | "interactive" -> Interactive
+    | "promote" -> Promote
+    | "error" | _ -> Error
+
   type res =
     [ `Passed of string
     | `Promoted of string
@@ -294,4 +301,38 @@ module Runner = struct
     let (res, status) = run_tests_with_res mode out tests in
     let () = pp_res out ~color res in
     status
+
+  module Cli = struct
+    type args = { mode : mode; color : bool }
+
+    let parse argv =
+      let mode = ref "" in
+      let color = ref false in
+
+      let options =
+        Arg.align
+          [
+            ("--mode", Arg.Set_string mode, " set runner mode");
+            ("-m", Arg.Set_string mode, " set runner mode");
+            ("--color", Arg.Set color, " set color output");
+            ("-c", Arg.Set color, " set color output");
+          ]
+      in
+      let () = Arg.parse_argv argv options (fun _ -> ()) "run osnap suite" in
+      let mode = mode_from_string !mode in
+      { mode; color = !color }
+  end
+
+  let run_tests_main ?(argv = Sys.argv) tests =
+    try
+      let cli_args = Cli.parse argv in
+
+      exit (run_tests ~mode:cli_args.mode ~color:cli_args.color tests)
+    with
+    | Arg.Bad msg ->
+        print_endline msg ;
+        exit 1
+    | Arg.Help msg ->
+        print_endline msg ;
+        exit 0
 end
