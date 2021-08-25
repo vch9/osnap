@@ -36,7 +36,7 @@ let test =
   let spec = Spec.(small_int ^> small_int ^>> string_of_int) in
   let path = ".osnap/exponentiation" in
   
-  let test = Test.make ~spec ~path ~count:5 ~name:"exponentiation" exponentiation
+  Test.make ~spec ~path ~count:5 ~name:"exponentiation" exponentiation
   
 let _ =
  Osnap.Runner.(run_tests ~mode:Interactive [ test ])
