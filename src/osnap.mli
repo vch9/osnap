@@ -231,6 +231,8 @@ module Runner : sig
 
       @return an error code, [0] if all tests passed, [1] otherwise
       @param mode default is Error
+      @param color, if true, colorful output
       *)
-  val run_tests : ?mode:mode -> ?out:Format.formatter -> Test.t list -> int
+  val run_tests :
+    ?mode:mode -> ?out:Format.formatter -> ?color:bool -> Test.t list -> int
 end

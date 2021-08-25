@@ -148,16 +148,22 @@ module Runner = struct
 
   let sep = String.make 68 '-'
 
-  let pp_failure fmt () = Color.(pp_str ~bold:true fmt `Red "failure")
+  let pp_failure fmt color =
+    let s = "failure" in
+    if color then Color.(pp_str ~bold:true fmt `Red s)
+    else Format.pp_print_string fmt s
 
-  let pp_success fmt () = Color.(pp_str fmt `Green "success")
+  let pp_success fmt color =
+    let s = "success" in
+    if color then Color.(pp_str fmt `Green "success")
+    else Format.pp_print_string fmt s
 
-  let pp_error fmt = function
+  let pp_error fmt ~color = function
     | `Error (_, x) ->
-        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure () sep x
+        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure color sep x
     | _ -> ()
 
-  let pp_recap fmt passed promoted ignored errors =
+  let pp_recap fmt ~color passed promoted ignored errors =
     let open Format in
     let n =
       List.(length passed + length promoted + length ignored + length errors)
@@ -185,7 +191,8 @@ module Runner = struct
     in
 
     let pp_res fmt errors =
-      if List.length errors > 0 then pp_failure fmt () else pp_success fmt ()
+      if List.length errors > 0 then pp_failure fmt color
+      else pp_success fmt color
     in
 
     fprintf
@@ -199,15 +206,15 @@ module Runner = struct
       pp_aux
       strs
 
-  let pp_res fmt xs =
+  let pp_res fmt ~color xs =
     let passed = get_passed xs in
     let promoted = get_promoted xs in
     let ignored = get_ignored xs in
     let errors = get_errors xs in
 
-    let () = match errors with x :: _ -> pp_error fmt x | _ -> () in
+    let () = match errors with x :: _ -> pp_error fmt ~color x | _ -> () in
 
-    pp_recap fmt passed promoted ignored errors
+    pp_recap fmt ~color passed promoted ignored errors
 
   let input_msg fmt () =
     let open Format in
@@ -282,8 +289,9 @@ module Runner = struct
     in
     (res, status)
 
-  let run_tests ?(mode = Error) ?(out = Format.std_formatter) tests =
+  let run_tests ?(mode = Error) ?(out = Format.std_formatter) ?(color = true)
+      tests =
     let (res, status) = run_tests_with_res mode out tests in
-    let () = pp_res out res in
+    let () = pp_res out ~color res in
     status
 end
