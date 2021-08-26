@@ -61,7 +61,7 @@ let bool =
   build ~printer ~encoding gen
 
 let int =
-  let gen = Gen.int in
+  let gen = Gen.(-1073741823 -- 1073741823) in
   let printer = Int.to_string in
   let encoding = Data_encoding.int31 in
   build ~printer ~encoding gen
