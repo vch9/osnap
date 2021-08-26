@@ -1,5 +1,12 @@
-let rec exponentiation x n =
-  if n = 0 then 1 else if n = 1 then x else exponentiation x (n - 1) * x
+(* let rec exponentiation x n =
+ *   if n = 0 then 1 else if n = 1 then x else exponentiation x (n - 1) * x *)
+
+let rec binary_expo x n =
+  if n = 0 then 1
+  else if n mod 2 = 0 then
+    let tmp = binary_expo x (n / 2) in
+    tmp * tmp
+  else x * binary_expo x (n - 1)
 
 let test =
   let open Osnap in
@@ -7,6 +14,6 @@ let test =
   let spec = Spec.(small_int ^> small_int ^>> string_of_int) in
   let path = ".osnap/exponentiation" in
 
-  Test.make ~spec ~path ~count:5 ~name:"exponentiation" exponentiation
+  Test.make ~spec ~path ~count:5 ~name:"exponentiation" binary_expo
 
 let _ = Osnap.Runner.(run_tests ~mode:Interactive [ test ])
