@@ -55,6 +55,9 @@ type 'a gen = 'a QCheck.Gen.t
 (** ['a printer] is used to store randomly generated values *)
 type 'a printer = 'a -> string
 
+(** ['a encoding] is used to encode values in memory *)
+type 'a encoding = 'a Data_encoding.t
+
 (** ['a spec] combines an ['a gen] and a printer *)
 type 'a spec = {
   gen : 'a gen;
@@ -70,6 +73,9 @@ type ('fn, 'r) t =
 
 (** [default_printer printer] creates a default printer if [printer] is absent *)
 val default_printer : ('a -> string) option -> 'a -> string
+
+(** [build ?printer ?encoding gen] builds an ['a spec] with optional fields *)
+val build : ?printer:'a printer -> ?encoding:'a encoding -> 'a gen -> 'a spec
 
 (** [of_gen gen] creates an ['a spec] with no printer *)
 val of_gen : 'a gen -> 'a spec
