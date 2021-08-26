@@ -29,7 +29,12 @@ module Test = Osnap.Test
 module Snapshot = Osnap.Snapshot
 
 let small_int =
-  Spec.{ gen = QCheck.Gen.small_int; printer = Some string_of_int }
+  Spec.
+    {
+      gen = QCheck.Gen.small_int;
+      printer = Some string_of_int;
+      encoding = None;
+    }
 
 let spec = Spec.(small_int ^> small_int ^>> string_of_int)
 

@@ -56,7 +56,11 @@ type 'a gen = 'a QCheck.Gen.t
 type 'a printer = 'a -> string
 
 (** ['a spec] combines an ['a gen] and a printer *)
-type 'a spec = { gen : 'a gen; printer : 'a printer option }
+type 'a spec = {
+  gen : 'a gen;
+  printer : 'a printer option;
+  encoding : 'a Data_encoding.t option;
+}
 
 (** [t] is the specification type, describing a function.
     Thus [t] declaration must end with {! (^>>) }. *)

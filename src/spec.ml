@@ -29,7 +29,13 @@ type 'a gen = 'a Gen.t
 
 type 'a printer = 'a -> string
 
-type 'a spec = { gen : 'a gen; printer : 'a printer option }
+type 'a encoding = 'a Data_encoding.t
+
+type 'a spec = {
+  gen : 'a gen;
+  printer : 'a printer option;
+  encoding : 'a encoding option;
+}
 
 type ('fn, 'r) t =
   | Result : 'a printer -> ('a, 'a) t
@@ -38,27 +44,62 @@ type ('fn, 'r) t =
 let default_printer printer =
   Option.value ~default:(fun _ -> "<opaque>") printer
 
-let of_gen gen = { gen; printer = None }
+let of_gen gen = { gen; printer = None; encoding = None }
 
-let unit = { gen = Gen.unit; printer = Some Unit.to_string }
+let build ?printer ?encoding gen = { gen; printer; encoding }
 
-let bool = { gen = Gen.bool; printer = Some Bool.to_string }
+let unit =
+  let gen = Gen.unit in
+  let printer = Unit.to_string in
+  let encoding = Data_encoding.unit in
+  build ~printer ~encoding gen
 
-let int = { gen = Gen.int; printer = Some Int.to_string }
+let bool =
+  let gen = Gen.bool in
+  let printer = Bool.to_string in
+  let encoding = Data_encoding.bool in
+  build ~printer ~encoding gen
 
-let float = { gen = Gen.float; printer = Some Float.to_string }
+let int =
+  let gen = Gen.int in
+  let printer = Int.to_string in
+  let encoding = Data_encoding.int31 in
+  build ~printer ~encoding gen
 
-let char = { gen = Gen.char; printer = Some (Format.sprintf "%c") }
+let float =
+  let gen = Gen.float in
+  let printer = Float.to_string in
+  let encoding = Data_encoding.float in
+  build ~printer ~encoding gen
 
-let string = { gen = Gen.string; printer = Some (fun x -> x) }
+let char =
+  let gen = Gen.char in
+  let printer = Format.sprintf "%c" in
+  (* let encoding = Data_encoding.char in *)
+  build ~printer gen
+
+let string =
+  let gen = Gen.string in
+  let printer x = x in
+  let encoding = Data_encoding.string in
+  build ~printer ~encoding gen
 
 let option spec =
   let printer x =
     let f = default_printer spec.printer in
     match x with Some x -> Printf.sprintf "Some (%s)" (f x) | None -> "None"
   in
+  let gen = Gen.opt spec.gen in
+  let printer = printer in
 
-  { gen = Gen.opt spec.gen; printer = Some printer }
+  let encoding =
+    Option.fold
+      ~none:None
+      ~some:(fun x -> Option.some @@ Data_encoding.option x)
+      spec.encoding
+  in
+
+  build ~printer ?encoding gen
 
 let printer_list f l =
   let rec printer_elements = function
@@ -72,12 +113,25 @@ let array spec =
   let printer x =
     Array.to_list x |> printer_list (default_printer spec.printer)
   in
-  { gen = Gen.array spec.gen; printer = Some printer }
+  let gen = Gen.array spec.gen in
+  let encoding =
+    Option.fold
+      ~none:None
+      ~some:(fun x -> Option.some @@ Data_encoding.array x)
+      spec.encoding
+  in
+  build ~printer ?encoding gen
 
 let list spec =
-  let printer = printer_list (default_printer spec.printer) |> Option.some in
+  let printer = printer_list (default_printer spec.printer) in
   let gen = Gen.list spec.gen in
-  { gen; printer }
+  let encoding =
+    Option.fold
+      ~none:None
+      ~some:(fun x -> Option.some @@ Data_encoding.list x)
+      spec.encoding
+  in
+  build ~printer ?encoding gen
 
 let ( ^> ) x y = Arrow (x, y)
 
