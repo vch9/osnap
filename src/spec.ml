@@ -24,6 +24,7 @@
 (*****************************************************************************)
 
 module Gen = QCheck.Gen
+module Data_encoding = Data_encoding
 
 type 'a gen = 'a Gen.t
 
