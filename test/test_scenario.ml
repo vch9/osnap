@@ -23,8 +23,25 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Diff = Test_diff
-module Snapshot = Test_snapshot
-module Scenario = Test_scenario
+module S = Osnap__Scenario
+open Test_helpers
 
-let () = Alcotest.run "osnap" [ Diff.tests; Snapshot.tests; Scenario.tests ]
+let eq spec = Alcotest.of_pp (fun fmt -> S.pp fmt spec)
+
+let test_reapply_good () =
+  let scenario = S.(Cons (1, Cons (1, Res 2))) in
+  let actual = S.reapply scenario add in
+  Alcotest.(check (eq spec_add))
+    "reapply with same f must returns the same scenario"
+    scenario
+    actual
+
+let tests =
+  ( "Scenario",
+    Alcotest.
+      [
+        test_case
+          "test_reapply scenario on equivalent new f"
+          `Quick
+          test_reapply_good;
+      ] )

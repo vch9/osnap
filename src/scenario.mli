@@ -42,3 +42,7 @@ val spec_to_scenario :
 val encoding_scenario : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
 
 val pp : Format.formatter -> ('fn, 'r) Spec.t -> ('fn, 'r) t -> unit
+
+(** [reapply scenario f] takes generated parameters inside [scenario] and
+    apply them to [f] *)
+val reapply : ('fn, 'r) t -> 'fn -> ('fn, 'r) t

@@ -67,3 +67,9 @@ let rec to_string : type fn r. (fn, r) Spec.t -> (fn, r) t -> string =
   | _ -> assert false
 
 let pp fmt spec scenario = Format.fprintf fmt "%s" (to_string spec scenario)
+
+let rec reapply : type fn r. (fn, r) t -> fn -> (fn, r) t =
+ fun scenario f ->
+  match scenario with
+  | Res _ -> Res f
+  | Cons (x, scenario) -> Cons (x, reapply scenario (f x))
