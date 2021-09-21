@@ -23,6 +23,7 @@ depends: [
   "ppx_deriving" { >= "5.2.1" }
   "qcheck-alcotest" { with-test & >= "0.17" }
   "odoc" { with-doc }
+  "bisect_ppx" { dev & >= "2.5.0"}
 ]
 
 build: ["dune" "build" "-p" name "-j" jobs]
