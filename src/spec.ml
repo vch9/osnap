@@ -43,6 +43,12 @@ type ('fn, 'r) t =
   | Result : 'r result -> ('r, 'r) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
+let rec can_encode : type fn r. (fn, r) t -> bool =
+ fun spec ->
+  match spec with
+  | Result { encoding; _ } -> Option.is_some encoding
+  | Arrow ({ encoding; _ }, spec) -> Option.is_some encoding && can_encode spec
+
 let default_printer printer =
   Option.value ~default:(fun _ -> "<opaque>") printer
 

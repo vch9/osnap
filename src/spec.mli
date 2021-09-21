@@ -113,3 +113,6 @@ val ( ^> ) : 'a spec -> ('b, 'c) t -> ('a -> 'b, 'c) t
 
 (** [(^>>) x res] combines a specification and printer for the result type *)
 val ( ^>> ) : 'a spec -> 'b result -> ('a -> 'b, 'b) t
+
+(** [can_encode spec] returns true if every spec in [spec] can be encoded *)
+val can_encode : ('fn, 'r) t -> bool
