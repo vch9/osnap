@@ -38,4 +38,20 @@ let rec spec_to_scenario : type fn r. (fn, r) Spec.t -> fn -> (fn, r) t =
       Cons (x, spec_to_scenario spec (f x))
   | Result _ -> Res f
 
-let encoding_scenario _spec = failwith "todo"
+let rec encoding_scenario : type fn r. (fn, r) Spec.t -> (fn, r) t Spec.encoding
+    =
+ fun spec ->
+  let open Spec in
+  let open Data_encoding in
+  match spec with
+  | Result { encoding; _ } ->
+      assert (Option.is_some encoding) ;
+      let encoding = Option.get encoding in
+      conv (function Res x -> x | _ -> assert false) (fun x -> Res x) encoding
+  | Arrow ({ encoding; _ }, spec) ->
+      assert (Option.is_some encoding) ;
+      let encoding = Option.get encoding in
+      conv
+        (function Cons (a, b) -> (a, b) | _ -> assert false)
+        (fun (a, b) -> Cons (a, b))
+        (tup2 encoding @@ encoding_scenario spec)

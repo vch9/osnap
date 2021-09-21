@@ -38,4 +38,4 @@ val spec_to_scenario : ('fn, 'r) Spec.t -> 'fn -> ('fn, 'r) t
 
 (** [encoding_scenario spec] encodes a scenario using [spec], every element inside
     [spec] __must__ contains an encoding *)
-val encoding_scenario : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
+val encoding_scenario : ('fn, 'r) Spec.t -> ('fn, 'r) t Spec.encoding
