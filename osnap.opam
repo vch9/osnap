@@ -21,7 +21,7 @@ depends: [
   "qcheck" {>= "0.17" }
   "patdiff" { >= "0.14.0" }
   "ppx_deriving" { >= "5.2.1" }
-  "alcotest" { with-test & >= "1.4.0" }
+  "qcheck-alcotest" { with-test & >= "0.17" }
   "odoc" { with-doc }
 ]
 
