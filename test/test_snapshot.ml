@@ -23,9 +23,21 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Diff = Test_diff
+module S = Osnap__Snapshot
+open Test_helpers
 
-(* module Osnap = Test_osnap *)
-module Snapshot = Test_snapshot
+let eq spec = Alcotest.of_pp (fun fmt -> S.pp fmt spec)
 
-let () = Alcotest.run "osnap" [ Diff.tests; Snapshot.tests ]
+let test_create =
+  QCheck.Test.make
+    ~name:"create name n <=> snap.name = name && |snap.scenarios| = n"
+    QCheck.(pair string small_int)
+    (fun (name, n) ->
+      let (S.Snapshot { name = name'; scenarios }) =
+        S.create ~name ~spec:spec_add ~f:add n
+      in
+      name = name' && List.length scenarios = n)
+
+let qcheck_tests = [ test_create ] |> List.map QCheck_alcotest.to_alcotest
+
+let tests = ("Snapshot", qcheck_tests)
