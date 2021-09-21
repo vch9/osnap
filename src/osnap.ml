@@ -45,70 +45,71 @@ module Snapshot = struct
   open Test
   module M = Memory
 
-  let rec decode_applications :
-      type a b.
-      (a, b) Spec.t -> (a, b) Interpreter.args * string -> string * string =
-   fun spec (args, res) ->
-    let open Interpreter in
-    let open Spec in
-    match (args, spec) with
-    | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
-        let s = (default_printer printer) x in
-        let (x, y) = decode_applications ys (xs, res) in
-        ("  " ^ s ^ x, y)
-    | (Nil, Result printer) ->
-        let x = M.Encode.from_string res in
-        ("", printer x)
-    | _ -> assert false
-
-  let show spec snapshot =
-    let name = M.Snapshot.name snapshot in
-    let applications =
-      M.Snapshot.applications snapshot
-      |> List.map (fun (args, res) ->
-             decode_applications spec (M.Encode.from_string args, res))
-    in
-    List.fold_left
-      (fun acc (args, res) ->
-        Printf.sprintf "%s%s  =>  %s\n%s" name args res acc)
-      ""
-      applications
+  (* let rec decode_applications :
+   *     type a b. (a, b) Spec.t -> (a, b) Scenario.t * string -> string * string =
+   *  fun spec (scenario, res) ->
+   *   let open Scenario in
+   *   let open Spec in
+   *   match (scenario, spec) with
+   *   | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
+   *       let s = (default_printer printer) x in
+   *       let (x, y) = decode_applications ys (xs, res) in
+   *       ("  " ^ s ^ x, y)
+   *   | (Res x, Result printer) ->
+   *       let x = M.Encode.from_string res in
+   *       ("", printer x)
+   *   | _ -> assert false
+   *)
+  let show _spec _snapshot = failwith "todo"
+  (* let name = M.Snapshot.name snapshot in
+   * let applications =
+   *   M.Snapshot.applications snapshot
+   *   |> List.map (fun (args, res) ->
+   *          decode_applications spec (M.Encode.from_string args, res))
+   * in
+   * List.fold_left
+   *   (fun acc (args, res) ->
+   *     Printf.sprintf "%s%s  =>  %s\n%s" name args res acc)
+   *   ""
+   *   applications *)
 
   let make ?rand (Test { spec; f; count; name; rand = rand'; _ }) =
-    let rand = match (rand, rand') with (None, x) -> x | (x, _) -> x in
-    let spec_to_args =
-      Option.fold
-        ~none:Interpreter.spec_to_args
-        ~some:(fun rand -> Interpreter.Internal_for_tests.spec_to_args rand)
-        (* For testing only *)
-        rand
-    in
-    let applications =
-      List.init count (fun _ ->
-          let args = spec_to_args spec in
-          let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
-          (M.Encode.to_string args [], M.Encode.to_string res []))
-    in
-    M.Snapshot.build name applications
+    let _ = (rand, spec, f, count, name, rand') in
+    failwith "todo"
+  (* let rand = match (rand, rand') with (None, x) -> x | (x, _) -> x in
+   * let spec_to_args =
+   *   Option.fold
+   *     ~none:Interpreter.spec_to_args
+   *     ~some:(fun rand -> Interpreter.Internal_for_tests.spec_to_args rand)
+   *     (\* For testing only *\)
+   *     rand
+   * in
+   * let applications =
+   *   List.init count (fun _ ->
+   *       let args = spec_to_args spec in
+   *       let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
+   *       (M.Encode.to_string args [], M.Encode.to_string res []))
+   * in
+   * M.Snapshot.build name applications *)
 
-  let next test snapshot =
-    let Test.(Test { f; name; _ }) = test in
-    match snapshot with
-    | None -> make test
-    | Some prev ->
-        let decoded_applications =
-          M.Snapshot.applications prev
-          |> List.map (fun (x, y) ->
-                 (M.Encode.from_string x, M.Encode.from_string y))
-        in
-        let new_applications =
-          List.map
-            (fun (args, _) ->
-              let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
-              (M.Encode.to_string args [], M.Encode.to_string res []))
-            decoded_applications
-        in
-        M.Snapshot.build name new_applications
+  let next _test _snapshot = failwith "todo"
+  (*   let Test.(Test { f; name; _ }) = test in
+ *     match snapshot with
+ *     | None -> make test
+ *     | Some prev ->
+ *         let decoded_applications =
+ *           M.Snapshot.applications prev
+ *           |> List.map (fun (x, y) ->
+ *                  (M.Encode.from_string x, M.Encode.from_string y))
+ *         in
+ *         let new_applications =
+ *           List.map
+ *             (fun (args, _) ->
+ *               let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
+ *               (M.Encode.to_string args [], M.Encode.to_string res []))
+ *             decoded_applications
+ *         in
+   *         M.Snapshot.build name new_applications *)
 end
 
 module Color = struct
