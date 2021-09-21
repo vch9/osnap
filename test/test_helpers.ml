@@ -36,3 +36,24 @@ let res_int = Spec.build_result ~encoding:Data_encoding.int31 string_of_int
 let add = ( + )
 
 let spec_add = Spec.(small_int ^> small_int ^>> res_int)
+
+let qcheck_eq ?pp ?cmp ?eq expected actual =
+  let pass =
+    match (eq, cmp) with
+    | (Some eq, _) -> eq expected actual
+    | (None, Some cmp) -> cmp expected actual = 0
+    | (None, None) -> Stdlib.compare expected actual = 0
+  in
+  if pass then true
+  else
+    match pp with
+    | None ->
+        QCheck.Test.fail_reportf
+          "@[<h 0>Values are not equal, but no pretty printer was provided.@]"
+    | Some pp ->
+        QCheck.Test.fail_reportf
+          "@[<v 2>Equality check failed!@,expected:@,%a@,actual:@,%a@]"
+          pp
+          expected
+          pp
+          actual
