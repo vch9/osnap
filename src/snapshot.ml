@@ -23,15 +23,29 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Snapshot : sig
-  type ('fn, 'r) t =
-    | Snapshot : {
-        name : string;
-        scenarios : ('fn, 'r) Scenario.t list;
-      }
-        -> ('fn, 'r) t
+type ('fn, 'r) t =
+  | Snapshot : {
+      name : string;
+      scenarios : ('fn, 'r) Scenario.t list;
+    }
+      -> ('fn, 'r) t
 
-  val pp : Format.formatter -> ('fn, 'r) Spec.t -> ('fn, 'r) t -> unit
+let pp fmt spec (Snapshot { name; scenarios }) =
+  let pp_aux fmt = Scenario.pp fmt spec in
+  let pp_list fmt scenarios = Format.pp_print_list pp_aux fmt scenarios in
+  Format.fprintf
+    fmt
+    "{@.name = %s;@.scenarios = @[<hov 2>%a@]@.}"
+    name
+    pp_list
+    scenarios
 
-  val encoding : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
-end
+let encoding : type fn r. (fn, r) Spec.t -> (fn, r) t Data_encoding.encoding =
+ fun spec ->
+  let open Data_encoding in
+  conv
+    (fun (Snapshot { name; scenarios }) -> (name, scenarios))
+    (fun (name, scenarios) -> Snapshot { name; scenarios })
+    (obj2
+       (req "name" string)
+       (req "scenarios" @@ list @@ Scenario.encoding_scenario spec))

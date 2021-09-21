@@ -43,7 +43,6 @@ end
 
 module Snapshot = struct
   open Test
-  module M = Memory
 
   (* let rec decode_applications :
    *     type a b. (a, b) Spec.t -> (a, b) Scenario.t * string -> string * string =
