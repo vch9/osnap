@@ -49,3 +49,7 @@ let encoding : type fn r. (fn, r) Spec.t -> (fn, r) t Data_encoding.encoding =
     (obj2
        (req "name" string)
        (req "scenarios" @@ list @@ Scenario.encoding_scenario spec))
+
+let create ~name ~spec ~f n =
+  let scenarios = List.init n (fun _ -> Scenario.spec_to_scenario spec f) in
+  Snapshot { name; scenarios }

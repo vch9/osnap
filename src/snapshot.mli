@@ -33,3 +33,7 @@ type ('fn, 'r) t =
 val pp : Format.formatter -> ('fn, 'r) Spec.t -> ('fn, 'r) t -> unit
 
 val encoding : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
+
+(** [create ~name ~spec ~f n] creates a snapshot with [n] scenarios
+built using [spec] and [f] *)
+val create : name:string -> spec:('fn, 'r) Spec.t -> f:'fn -> int -> ('fn, 'r) t
