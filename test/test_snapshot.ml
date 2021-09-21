@@ -28,6 +28,14 @@ open Test_helpers
 
 let eq spec = Alcotest.of_pp (fun fmt -> S.pp fmt spec)
 
+let pp spec fmt = S.pp fmt spec
+
+let arb_snapshot =
+  QCheck.(
+    map
+      (fun (name, n) -> S.create ~name ~spec:spec_add ~f:add n)
+      (pair string small_int))
+
 let test_create =
   QCheck.Test.make
     ~name:"create name n <=> snap.name = name && |snap.scenarios| = n"
@@ -38,6 +46,87 @@ let test_create =
       in
       name = name' && List.length scenarios = n)
 
-let qcheck_tests = [ test_create ] |> List.map QCheck_alcotest.to_alcotest
+let test_encode_marshal =
+  QCheck.Test.make
+    ~name:"fun snapshot -> decode (encode snapshot) = snapshot with Marshal"
+    arb_snapshot
+    (fun snapshot ->
+      let path = "./foo" in
+      let expected = snapshot in
+      let actual =
+        S.encode ~spec:spec_add ~mode:`Binary ~path snapshot ;
+        S.decode ~spec:spec_add ~mode:`Binary ~path ()
+      in
+      qcheck_eq ~pp:(pp spec_add) expected actual)
 
-let tests = ("Snapshot", qcheck_tests)
+let test_encode_json =
+  QCheck.Test.make
+    ~name:
+      "fun snapshot -> decode (encode snapshot) = snapshot with Data_encoding"
+    arb_snapshot
+    (fun snapshot ->
+      let path = "./foo" in
+      let expected = snapshot in
+      let actual =
+        S.encode ~spec:spec_add ~mode:`Encoding ~path snapshot ;
+        S.decode ~spec:spec_add ~mode:`Encoding ~path ()
+      in
+      qcheck_eq ~pp:(pp spec_add) expected actual)
+
+let test_fail_json_invalid_spec () =
+  let incomplete_spec =
+    Osnap.Spec.(int ^> of_gen QCheck.Gen.int ^>> build_result string_of_int)
+  in
+  let path = "./foo" in
+  let snapshot = S.create ~name:"" ~spec:incomplete_spec ~f:add 5 in
+
+  Alcotest.check_raises
+    "encode with incomplete encodings must fail"
+    (Invalid_argument "Some encoding fields in the specification are missing")
+    (fun () -> S.encode ~spec:incomplete_spec ~mode:`Encoding ~path snapshot)
+
+let test_fail_json_no_spec_encode () =
+  let path = "./foo" in
+  let snapshot = S.create ~name:"" ~spec:spec_add ~f:add 5 in
+
+  Alcotest.check_raises
+    "encode with no specification must fail"
+    (Invalid_argument "Cannot encode a snapshot without the specification")
+    (fun () -> S.encode ~mode:`Encoding ~path snapshot)
+
+let test_fail_json_no_spec_decode () =
+  let path = "./foo" in
+  let snapshot = S.create ~name:"" ~spec:spec_add ~f:add 5 in
+
+  Alcotest.check_raises
+    "encode with no specification must fail"
+    (Invalid_argument "Cannot decode a snapshot without the specification")
+    (fun () ->
+      S.encode ~spec:spec_add ~mode:`Encoding ~path snapshot ;
+      S.decode ~mode:`Encoding ~path () |> ignore)
+
+let test_create_empty () =
+  let actual = S.create ~name:"empty" ~spec:spec_add ~f:add 0 in
+  let expected = S.(Snapshot { name = "empty"; scenarios = [] }) in
+  Alcotest.(check (eq spec_add)) "create ~name:empty _ _ 0" expected actual
+
+let qcheck_tests =
+  [ test_create; test_encode_marshal; test_encode_json ]
+  |> List.map QCheck_alcotest.to_alcotest
+
+let tests =
+  Alcotest.
+    [
+      test_case "test_create_empty" `Quick test_create_empty;
+      test_case "test_fail_json_invalid_spec" `Quick test_fail_json_invalid_spec;
+      test_case
+        "test_fail_json_no_spec_encode"
+        `Quick
+        test_fail_json_no_spec_encode;
+      test_case
+        "test_fail_json_no_spec_decode"
+        `Quick
+        test_fail_json_no_spec_decode;
+    ]
+
+let tests = ("Snapshot", qcheck_tests @ tests)
