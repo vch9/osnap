@@ -11,9 +11,14 @@ let rec binary_expo x n =
 let test =
   let open Osnap in
   let small_int =
-    Spec.{ gen = Gen.small_int; printer = Some string_of_int; encoding = None }
+    Spec.
+      {
+        gen = QCheck.Gen.small_int;
+        printer = Some string_of_int;
+        encoding = None;
+      }
   in
-  let spec = Spec.(small_int ^> small_int ^>> string_of_int) in
+  let spec = Spec.(small_int ^> small_int ^>> build_result string_of_int) in
   let path = ".osnap/exponentiation" in
 
   Test.make ~spec ~path ~count:5 ~name:"exponentiation" binary_expo
