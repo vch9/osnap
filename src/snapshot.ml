@@ -40,6 +40,10 @@ let pp fmt spec (Snapshot { name; scenarios }) =
     pp_list
     scenarios
 
+let to_string spec snapshot =
+  let pp fmt = pp fmt spec in
+  Format.asprintf "%a" pp snapshot
+
 let encoding : type fn r. (fn, r) Spec.t -> (fn, r) t Data_encoding.encoding =
  fun spec ->
   let open Data_encoding in
