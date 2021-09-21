@@ -73,7 +73,7 @@ module Snapshot = struct
    *   ""
    *   applications *)
 
-  let make ?rand (Test { spec; f; count; name; rand = rand'; _ }) =
+  let _make ?rand (Test { spec; f; count; name; rand = rand'; _ }) =
     let _ = (rand, spec, f, count, name, rand') in
     failwith "todo"
   (* let rand = match (rand, rand') with (None, x) -> x | (x, _) -> x in
@@ -239,7 +239,7 @@ module Runner = struct
     | "n" -> false
     | _ -> take_input fmt ()
 
-  let interactive fmt diff name path snapshot =
+  let interactive fmt diff name _path _snapshot =
     match diff with
     | Diff.Same -> `Passed name
     | _ ->
@@ -251,7 +251,7 @@ module Runner = struct
         in
         let () = Format.pp_print_string fmt msg in
         if take_input fmt () then
-          let () = Memory.Snapshot.write path snapshot in
+          let () = (* Memory.Snapshot.write path snapshot *) failwith "todo" in
           `Promoted name
         else `Ignored name
 
@@ -263,16 +263,17 @@ module Runner = struct
         `Error (name, msg)
     | Diff.(Diff s) -> `Error (name, s)
 
-  let promote diff name path snapshot =
+  let promote diff name _path _snapshot =
     match diff with
     | Diff.Same -> `Passed name
     | Diff.(New _) | Diff.(Diff _) ->
-        let () = Memory.Snapshot.write path snapshot in
+        (* let () = Memory.Snapshot.write path snapshot in *)
+        let () = failwith "todo" in
         `Promoted name
 
   let run mode fmt test =
     let Test.(Test { spec; path; name; _ }) = test in
-    let prev = Memory.Snapshot.read path in
+    let prev = (* Memory.Snapshot.read path *) failwith "todo" in
     let prev_str =
       Option.fold
         ~none:None
