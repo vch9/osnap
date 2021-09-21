@@ -38,8 +38,10 @@ type 'a spec = {
   encoding : 'a encoding option;
 }
 
+type 'a result = { printer : 'a printer; encoding : 'a encoding option }
+
 type ('fn, 'r) t =
-  | Result : 'a printer -> ('a, 'a) t
+  | Result : 'r result -> ('r, 'r) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 let default_printer printer =

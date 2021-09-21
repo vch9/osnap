@@ -69,10 +69,12 @@ type 'a spec = {
   encoding : 'a Data_encoding.t option;
 }
 
+type 'a result = { printer : 'a printer; encoding : 'a Data_encoding.t option }
+
 (** [t] is the specification type, describing a function.
     Thus [t] declaration must end with {! (^>>) }. *)
 type ('fn, 'r) t =
-  | Result : 'a printer -> ('a, 'a) t
+  | Result : 'r result -> ('r, 'r) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 (** [default_printer printer] creates a default printer if [printer] is absent *)
