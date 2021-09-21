@@ -42,15 +42,7 @@
       let sum = List.fold_left ( + )
       let spec_sum = list int ^>> string_of_int
     ]}
- *)
-
-module Gen : sig
-  include module type of QCheck.Gen
-end
-
-module Data_encoding : sig
-  include module type of Data_encoding
-end
+*)
 
 (** ['a gen] is used to generate random values inside {!spec}.
     QCheck combinators are available using [Spec.Gen]. *)
