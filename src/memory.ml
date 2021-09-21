@@ -23,32 +23,31 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Encode = struct
-  let to_string = Marshal.to_string
-
-  let from_string x = Marshal.from_string x 0
-end
-
 module Snapshot = struct
-  type t = { name : string; applications : (string * string) list }
-  [@@deriving show { with_path = false }]
+  type ('fn, 'r) t =
+    | Snapshot : {
+        name : string;
+        scenarios : ('fn, 'r) Scenario.t list;
+      }
+        -> ('fn, 'r) t
 
-  let name x = x.name
+  let pp fmt spec (Snapshot { name; scenarios }) =
+    let pp_aux fmt = Scenario.pp fmt spec in
+    let pp_list fmt scenarios = Format.pp_print_list pp_aux fmt scenarios in
+    Format.fprintf
+      fmt
+      "{@.name = %s;@.scenarios = @[<hov 2>%a@]@.}"
+      name
+      pp_list
+      scenarios
 
-  let applications x = x.applications
-
-  let build name applications = { name; applications }
-
-  let read path =
-    if Sys.file_exists path then
-      let ic = open_in path in
-      let x = Marshal.from_channel ic in
-      let () = close_in ic in
-      Some x
-    else None
-
-  let write path snapshot =
-    let oc = open_out path in
-    let () = Marshal.to_channel oc snapshot [] in
-    close_out oc
+  let encoding : type fn r. (fn, r) Spec.t -> (fn, r) t Data_encoding.encoding =
+   fun spec ->
+    let open Data_encoding in
+    conv
+      (fun (Snapshot { name; scenarios }) -> (name, scenarios))
+      (fun (name, scenarios) -> Snapshot { name; scenarios })
+      (obj2
+         (req "name" string)
+         (req "scenarios" @@ list @@ Scenario.encoding_scenario spec))
 end

@@ -23,34 +23,15 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Encode : sig
-  (** [to_string x] encodes [x] using Marshal *)
-  val to_string : 'a -> Marshal.extern_flags list -> string
-
-  (** [from_string x] decodes [x] using Marshal *)
-  val from_string : string -> 'a
-end
-
 module Snapshot : sig
-  type t = {
-    name : string;  (** snapshot name *)
-    applications : (string * string) list;
-        (** list of args * result, encoded in binary *)
-  }
+  type ('fn, 'r) t =
+    | Snapshot : {
+        name : string;
+        scenarios : ('fn, 'r) Scenario.t list;
+      }
+        -> ('fn, 'r) t
 
-  val pp : Format.formatter -> t -> unit
+  val pp : Format.formatter -> ('fn, 'r) Spec.t -> ('fn, 'r) t -> unit
 
-  val show : t -> string
-
-  val name : t -> string
-
-  val applications : t -> (string * string) list
-
-  val build : string -> (string * string) list -> t
-
-  (** [read path] reads snapshot at [path], returns None when path does not exists *)
-  val read : string -> t option
-
-  (** [write path snapshot] writes [snapshot] at [path] *)
-  val write : string -> t -> unit
+  val encoding : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
 end
