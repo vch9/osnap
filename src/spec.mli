@@ -75,6 +75,9 @@ val default_printer : ('a -> string) option -> 'a -> string
 (** [build ?printer ?encoding gen] builds an ['a spec] with optional fields *)
 val build : ?printer:'a printer -> ?encoding:'a encoding -> 'a gen -> 'a spec
 
+(** [build_result ?encoding printer] builds an ['a result] with optionally an encoding *)
+val build_result : ?encoding:'a encoding -> 'a printer -> 'a result
+
 (** [of_gen gen] creates an ['a spec] with no printer *)
 val of_gen : 'a gen -> 'a spec
 
@@ -109,4 +112,4 @@ val list : 'a spec -> 'a list spec
 val ( ^> ) : 'a spec -> ('b, 'c) t -> ('a -> 'b, 'c) t
 
 (** [(^>>) x res] combines a specification and printer for the result type *)
-val ( ^>> ) : 'a spec -> 'b printer -> ('a -> 'b, 'b) t
+val ( ^>> ) : 'a spec -> 'b result -> ('a -> 'b, 'b) t

@@ -50,6 +50,8 @@ let of_gen gen = { gen; printer = None; encoding = None }
 
 let build ?printer ?encoding gen = { gen; printer; encoding }
 
+let build_result ?encoding printer : 'a result = { printer; encoding }
+
 let unit =
   let gen = Gen.unit in
   let printer = Unit.to_string in
@@ -86,7 +88,7 @@ let string =
   let encoding = Data_encoding.string in
   build ~printer ~encoding gen
 
-let option spec =
+let option (spec : 'a spec) =
   let printer x =
     let f = default_printer spec.printer in
     match x with Some x -> Printf.sprintf "Some (%s)" (f x) | None -> "None"
@@ -111,7 +113,7 @@ let printer_list f l =
   in
   Printf.sprintf "[%s]" (printer_elements l)
 
-let array spec =
+let array (spec : 'a spec) =
   let printer x =
     Array.to_list x |> printer_list (default_printer spec.printer)
   in
@@ -124,7 +126,7 @@ let array spec =
   in
   build ~printer ?encoding gen
 
-let list spec =
+let list (spec : 'a spec) =
   let printer = printer_list (default_printer spec.printer) in
   let gen = Gen.list spec.gen in
   let encoding =
