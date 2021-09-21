@@ -83,9 +83,7 @@ module Spec : sig
   include module type of Spec
 end
 
-(** {2 Test creation }
-
-*)
+(** {2 Test creation } *)
 
 module Test : sig
   type t
@@ -107,16 +105,6 @@ module Test : sig
     ('a -> 'b) ->
     t
 end
-
-(**/**)
-
-module Snapshot : sig
-  val show : ('a, 'b) Spec.t -> Memory.Snapshot.t -> string
-
-  val make : ?rand:Random.State.t -> Test.t -> Memory.Snapshot.t
-end
-
-(**/**)
 
 (** {2 Runner}
 
