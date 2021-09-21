@@ -43,3 +43,35 @@ val create :
   f:'fn ->
   int ->
   ('fn, 'r) t
+
+(** [encode ?spec ~mode ~path snapshot] encodes the [snapshot] and write
+    the encoded version in [path]
+
+    Two possible modes of encoding:
+    - `Binary: the snapshot is encoded in binary using the library Marshal
+    - `Encoding: the snapshot is encoded in a JSON format using the Data_encoding
+    library. /!\ [spec] must be present in that case, and every field [encoding] should
+    be present inside [spec]. *)
+val encode :
+  ?spec:('fn, 'r) Spec.t ->
+  mode:[< `Binary | `Encoding ] ->
+  path:string ->
+  ('fn, 'r) t ->
+  unit
+
+(** [decode ?spec ~mode ~path ()] decodes the [snapshot] and read the
+    encoded version in [path]
+
+    Two possible modes of encoding:
+    - `Binary: the snapshot is encoded in binary using the library Marshal
+    - `Encoding: the snapshot is encoded in a JSON format using the Data_encoding
+    library. /!\ [spec] must be present in that case, and every field [encoding] should
+    be present inside [spec].
+
+    /!\ The mode of decoding must be the same used for encoding /!\ *)
+val decode :
+  ?spec:('fn, 'r) Spec.t ->
+  mode:[< `Binary | `Encoding ] ->
+  path:string ->
+  unit ->
+  ('fn, 'r) t

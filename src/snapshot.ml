@@ -55,3 +55,52 @@ let create ?rand ~name ~spec ~f n =
     List.init n (fun _ -> Scenario.spec_to_scenario ?rand spec f)
   in
   Snapshot { name; scenarios }
+
+let encode ?spec ~mode ~path snapshot =
+  match mode with
+  | `Binary ->
+      let oc = open_out path in
+      let () = Marshal.to_channel oc snapshot [] in
+      close_out oc
+  | `Encoding ->
+      if Option.is_none spec then
+        raise
+          (Invalid_argument "Cannot encode a snapshot without the specification")
+      else
+        let spec = Option.get spec in
+        let json = Data_encoding.Json.construct (encoding spec) snapshot in
+        let oc = open_out path in
+        let () = Printf.fprintf oc "%s" @@ Data_encoding.Json.to_string json in
+        close_out oc
+
+let read_file path =
+  let lines = ref [] in
+  let ic = open_in path in
+  try
+    while true do
+      lines := input_line ic :: !lines
+    done ;
+    assert false
+  with End_of_file ->
+    close_in ic ;
+    List.rev !lines |> String.concat ""
+
+let decode ?spec ~mode ~path () =
+  if Sys.file_exists path then
+    match mode with
+    | `Binary ->
+        let ic = open_in path in
+        let x = Marshal.from_channel ic in
+        let () = close_in ic in
+        x
+    | `Encoding ->
+        if Option.is_none spec then
+          raise
+            (Invalid_argument
+               "Cannot decode a snapshot without the specification")
+        else
+          let spec = Option.get spec in
+          let json = read_file path |> Data_encoding.Json.from_string in
+          let json = match json with Ok x -> x | Error _ -> failwith "todo" in
+          Data_encoding.Json.destruct (encoding spec) json
+  else raise (Invalid_argument (path ^ " does not exists"))
