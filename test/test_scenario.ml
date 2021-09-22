@@ -36,6 +36,13 @@ let test_reapply_good () =
     scenario
     actual
 
+let test_pp () =
+  let pp fmt = S.pp fmt spec_add in
+  let scenario = S.(Cons (0, Cons (1, Res 1))) in
+  let expected = "0    1    =    1" in
+  let actual = Format.asprintf "%a" pp scenario in
+  Alcotest.(check string) "test pp scenario" expected actual
+
 let tests =
   ( "Scenario",
     Alcotest.
@@ -44,4 +51,5 @@ let tests =
           "test_reapply scenario on equivalent new f"
           `Quick
           test_reapply_good;
+        test_case "test pp scenario" `Quick test_pp;
       ] )
