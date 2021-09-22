@@ -46,6 +46,10 @@ val create :
   int ->
   ('fn, 'r) t
 
+(** [create_from_snapshot snapshot f] applies [f] on each scenario inside
+    the [snapshot] *)
+val create_from_snapshot : ('fn, 'r) t -> 'fn -> ('fn, 'r) t
+
 (** [encode ?spec ~mode ~path snapshot] encodes the [snapshot] and write
     the encoded version in [path]
 

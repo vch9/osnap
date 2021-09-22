@@ -60,6 +60,12 @@ let create ?rand ~name ~spec ~f n =
   in
   Snapshot { name; scenarios }
 
+let create_from_snapshot (Snapshot { name; scenarios }) f =
+  let scenarios =
+    List.map (fun scenario -> Scenario.reapply scenario f) scenarios
+  in
+  Snapshot { name; scenarios }
+
 let encode ?spec ~mode ~path snapshot =
   match mode with
   | `Binary ->
