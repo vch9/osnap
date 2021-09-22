@@ -175,7 +175,8 @@ module Runner = struct
     | "n" -> false
     | _ -> take_input fmt ()
 
-  let interactive fmt diff name _path _snapshot =
+  (* TODO: labelled arguments would be easier *)
+  let interactive fmt diff name encoding spec path snapshot =
     match diff with
     | Diff.Same -> `Passed name
     | _ ->
@@ -187,7 +188,7 @@ module Runner = struct
         in
         let () = Format.pp_print_string fmt msg in
         if take_input fmt () then
-          let () = (* Memory.Snapshot.write path snapshot *) failwith "todo" in
+          let () = Snapshot.encode ~spec ~mode:encoding ~path snapshot in
           `Promoted name
         else `Ignored name
 
@@ -199,33 +200,37 @@ module Runner = struct
         `Error (name, msg)
     | Diff.(Diff s) -> `Error (name, s)
 
-  let promote diff name _path _snapshot =
+  (* TODO: labelled arguments would be easier *)
+  let promote diff name encoding spec path snapshot =
     match diff with
     | Diff.Same -> `Passed name
     | Diff.(New _) | Diff.(Diff _) ->
-        (* let () = Memory.Snapshot.write path snapshot in *)
-        let () = failwith "todo" in
+        let () = Snapshot.encode ~spec ~mode:encoding ~path snapshot in
         `Promoted name
 
-  let run _encoding mode fmt test =
-    let Test.(Test { spec = _; path; name; _ }) = test in
-    let _prev = (* Memory.Snapshot.read path *) failwith "todo" in
-    let prev_str =
-      failwith "todo"
-      (* Option.fold
-       *   ~none:None
-       *   ~some:(fun x -> Option.some @@ Snapshot.show spec x)
-       *   prev *)
+  let run encoding mode fmt test =
+    let Test.(Test { spec; path; name; rand; count; f; _ }) = test in
+
+    let prev = Snapshot.decode_opt ~spec ~mode:encoding ~path () in
+
+    let next =
+      match prev with
+      | None -> Snapshot.create ~rand ~name ~spec ~f count
+      | Some prev -> Snapshot.create_from_snapshot prev f
     in
 
-    let next = (* Snapshot.next test prev *) failwith "todo" in
-    let next_str = (* Snapshot.show spec next *) failwith "todo" in
-
-    let diff = Diff.diff prev_str next_str in
+    let diff =
+      Diff.diff
+        (Option.fold
+           ~none:None
+           ~some:(fun snap -> Snapshot.to_string spec snap |> Option.some)
+           prev)
+        (Snapshot.to_string spec next)
+    in
     match mode with
     | Error -> error diff name
-    | Promote -> promote diff name path next
-    | Interactive -> interactive fmt diff name path next
+    | Promote -> promote diff name encoding spec path next
+    | Interactive -> interactive fmt diff name encoding spec path next
 
   let run_tests_with_res encoding mode out tests : res * int =
     let res = List.map (run encoding mode out) tests in
