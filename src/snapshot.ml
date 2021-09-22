@@ -30,14 +30,20 @@ type ('fn, 'r) t =
     }
       -> ('fn, 'r) t
 
+let pp_scenarios spec fmt scenarios =
+  let pp fmt scenario =
+    Format.pp_print_char fmt '\t' ;
+    Scenario.pp fmt spec scenario
+  in
+
+  Format.pp_print_list ~pp_sep:Format.pp_print_newline pp fmt scenarios
+
 let pp fmt spec (Snapshot { name; scenarios }) =
-  let pp_aux fmt = Scenario.pp fmt spec in
-  let pp_list fmt scenarios = Format.pp_print_list pp_aux fmt scenarios in
   Format.fprintf
     fmt
-    "{@.name = %s;@.scenarios = @[<hov 2>%a@]@.}"
+    "{@.  name = %s;@.  scenarios = [@.@[<hov 2>%a@]@.  ]@.}"
     name
-    pp_list
+    (pp_scenarios spec)
     scenarios
 
 let to_string spec snapshot =

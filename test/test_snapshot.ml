@@ -110,6 +110,20 @@ let test_create_empty () =
   let expected = S.(Snapshot { name = "empty"; scenarios = [] }) in
   Alcotest.(check (eq spec_add)) "create ~name:empty _ _ 0" expected actual
 
+let test_to_string () =
+  let snapshot = S.create ~rand ~name:"add" ~spec:spec_add ~f:add 2 in
+  let expected =
+    {|{
+  name = add;
+  scenarios = [
+	23    5    =    28
+	1    0    =    1
+  ]
+}|}
+  in
+  let actual = S.to_string spec_add snapshot in
+  Alcotest.(check string) "test to_string" expected actual
+
 let qcheck_tests =
   [ test_create; test_encode_marshal; test_encode_json ]
   |> List.map QCheck_alcotest.to_alcotest
@@ -127,6 +141,7 @@ let tests =
         "test_fail_json_no_spec_decode"
         `Quick
         test_fail_json_no_spec_decode;
+      test_case "test_to_string" `Quick test_to_string;
     ]
 
 let tests = ("Snapshot", qcheck_tests @ tests)
