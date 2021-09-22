@@ -60,10 +60,10 @@ let rec encoding_scenario :
 let rec to_string : type fn r. (fn, r) Spec.t -> (fn, r) t -> string =
  fun spec scenario ->
   match (spec, scenario) with
-  | (Result { printer; _ }, Res r) -> Format.sprintf "=    %s" (printer r)
+  | (Result { printer; _ }, Res r) -> Format.sprintf "=\t%s" (printer r)
   | (Arrow ({ printer; _ }, spec), Cons (fn, scenario)) ->
       let printer = Spec.default_printer printer in
-      Format.sprintf "%s    %s" (printer fn) (to_string spec scenario)
+      Format.sprintf "%s\t%s" (printer fn) (to_string spec scenario)
   | _ -> assert false
 
 let pp fmt spec scenario = Format.fprintf fmt "%s" (to_string spec scenario)

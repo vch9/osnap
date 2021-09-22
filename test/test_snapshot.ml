@@ -114,13 +114,8 @@ let test_create_empty () =
 let test_to_string () =
   let snapshot = S.create ~rand ~name:"add" ~spec:spec_add ~f:add 2 in
   let expected =
-    {|{
-  name = add;
-  scenarios = [
-	8    2    =    10
-	68    4    =    72
-  ]
-}|}
+    Printf.sprintf
+      "{\n  name = add;\n  scenarios = [\n\t8\t2\t=\t10\n\t68\t4\t=\t72\n  ]\n}"
   in
   let actual = S.to_string spec_add snapshot in
 
