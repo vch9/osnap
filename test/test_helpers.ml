@@ -24,8 +24,11 @@
 (*****************************************************************************)
 
 open Osnap
+module RS = Random.State
 
-let rand = Random.State.make [| 42 |]
+let seed = [| 42 |]
+
+let rand = Random.State.make seed
 
 let small_int =
   Spec.build
