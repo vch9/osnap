@@ -33,7 +33,7 @@ let pp spec fmt = S.pp fmt spec
 let arb_snapshot =
   QCheck.(
     map
-      (fun (name, n) -> S.create ~name ~spec:spec_add ~f:add n)
+      (fun (name, n) -> S.create ~rand ~name ~spec:spec_add ~f:add n)
       (pair string small_int))
 
 let test_create =
@@ -42,7 +42,7 @@ let test_create =
     QCheck.(pair string small_int)
     (fun (name, n) ->
       let (S.Snapshot { name = name'; scenarios }) =
-        S.create ~name ~spec:spec_add ~f:add n
+        S.create ~rand ~name ~spec:spec_add ~f:add n
       in
       name = name' && List.length scenarios = n)
 
@@ -78,7 +78,7 @@ let test_fail_json_invalid_spec () =
     Osnap.Spec.(int ^> of_gen QCheck.Gen.int ^>> build_result string_of_int)
   in
   let path = "./foo" in
-  let snapshot = S.create ~name:"" ~spec:incomplete_spec ~f:add 5 in
+  let snapshot = S.create ~rand ~name:"" ~spec:incomplete_spec ~f:add 5 in
 
   Alcotest.check_raises
     "encode with incomplete encodings must fail"
@@ -87,7 +87,7 @@ let test_fail_json_invalid_spec () =
 
 let test_fail_json_no_spec_encode () =
   let path = "./foo" in
-  let snapshot = S.create ~name:"" ~spec:spec_add ~f:add 5 in
+  let snapshot = S.create ~rand ~name:"" ~spec:spec_add ~f:add 5 in
 
   Alcotest.check_raises
     "encode with no specification must fail"
@@ -96,7 +96,7 @@ let test_fail_json_no_spec_encode () =
 
 let test_fail_json_no_spec_decode () =
   let path = "./foo" in
-  let snapshot = S.create ~name:"" ~spec:spec_add ~f:add 5 in
+  let snapshot = S.create ~rand ~name:"" ~spec:spec_add ~f:add 5 in
 
   Alcotest.check_raises
     "encode with no specification must fail"
@@ -106,7 +106,7 @@ let test_fail_json_no_spec_decode () =
       S.decode ~mode:`Encoding ~path () |> ignore)
 
 let test_create_empty () =
-  let actual = S.create ~name:"empty" ~spec:spec_add ~f:add 0 in
+  let actual = S.create ~rand ~name:"empty" ~spec:spec_add ~f:add 0 in
   let expected = S.(Snapshot { name = "empty"; scenarios = [] }) in
   Alcotest.(check (eq spec_add)) "create ~name:empty _ _ 0" expected actual
 
@@ -116,17 +116,18 @@ let test_to_string () =
     {|{
   name = add;
   scenarios = [
-	23    5    =    28
-	1    0    =    1
+	8    2    =    10
+	68    4    =    72
   ]
 }|}
   in
   let actual = S.to_string spec_add snapshot in
+
   Alcotest.(check string) "test to_string" expected actual
 
 let qcheck_tests =
   [ test_create; test_encode_marshal; test_encode_json ]
-  |> List.map QCheck_alcotest.to_alcotest
+  |> List.map (QCheck_alcotest.to_alcotest ~rand)
 
 let tests =
   Alcotest.

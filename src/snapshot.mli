@@ -39,7 +39,7 @@ val encoding : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
 (** [create ~name ~spec ~f n] creates a snapshot with [n] scenarios
     built using [spec] and [f] *)
 val create :
-  ?rand:Random.State.t ->
+  rand:Random.State.t ->
   name:string ->
   spec:('fn, 'r) Spec.t ->
   f:'fn ->

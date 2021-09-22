@@ -60,9 +60,9 @@ let encoding : type fn r. (fn, r) Spec.t -> (fn, r) t Data_encoding.encoding =
        (req "name" string)
        (req "scenarios" @@ list @@ Scenario.encoding_scenario spec))
 
-let create ?rand ~name ~spec ~f n =
+let create ~rand ~name ~spec ~f n =
   let scenarios =
-    List.init n (fun _ -> Scenario.spec_to_scenario ?rand spec f)
+    List.init n (fun _ -> Scenario.spec_to_scenario ~rand spec f)
   in
   Snapshot { name; scenarios }
 

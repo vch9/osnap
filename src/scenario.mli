@@ -35,7 +35,7 @@ type ('fn, 'r) t =
 (** [spec_to_scenario spec f] instantiate arguments values using generators inside [spec],
     applies them to [f] *)
 val spec_to_scenario :
-  ?rand:Random.State.t -> ('fn, 'r) Spec.t -> 'fn -> ('fn, 'r) t
+  rand:Random.State.t -> ('fn, 'r) Spec.t -> 'fn -> ('fn, 'r) t
 
 (** [encoding_scenario spec] encodes a scenario using [spec], every element inside
     [spec] __must__ contains an encoding *)

@@ -31,12 +31,12 @@ type ('fn, 'r) t =
   | Cons : 'a * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 let rec spec_to_scenario :
-    type fn r. ?rand:Random.State.t -> (fn, r) Spec.t -> fn -> (fn, r) t =
- fun ?rand spec f ->
+    type fn r. rand:Random.State.t -> (fn, r) Spec.t -> fn -> (fn, r) t =
+ fun ~rand spec f ->
   match spec with
   | Arrow ({ gen; _ }, spec) ->
-      let x = Gen.generate1 ?rand gen in
-      Cons (x, spec_to_scenario ?rand spec (f x))
+      let x = Gen.generate1 ~rand gen in
+      Cons (x, spec_to_scenario ~rand spec (f x))
   | Result _ -> Res f
 
 let rec encoding_scenario :
