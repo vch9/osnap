@@ -127,3 +127,7 @@ let decode ?spec ~mode ~path () =
           let json = match json with Ok x -> x | Error _ -> failwith "todo" in
           Data_encoding.Json.destruct (encoding spec) json
   else raise (Invalid_argument (path ^ " does not exists"))
+
+let decode_opt ?spec ~mode ~path () =
+  (* FIXME: catch every exception is not a good practice *)
+  try decode ?spec ~mode ~path () |> Option.some with _ -> None

@@ -81,3 +81,12 @@ val decode :
   path:string ->
   unit ->
   ('fn, 'r) t
+
+(** [decode_opt] is the same as {!decode} but will return an option if an exception
+    is raised. *)
+val decode_opt :
+  ?spec:('fn, 'r) Spec.t ->
+  mode:[< `Binary | `Encoding ] ->
+  path:string ->
+  unit ->
+  ('fn, 'r) t option
