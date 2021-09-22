@@ -30,6 +30,8 @@ type ('fn, 'r) t =
     }
       -> ('fn, 'r) t
 
+type mode = Marshal | Data_encoding
+
 let pp_scenarios spec fmt scenarios =
   let pp fmt scenario =
     Format.pp_print_char fmt '\t' ;
@@ -74,11 +76,11 @@ let create_from_snapshot (Snapshot { name; scenarios }) f =
 
 let encode ?spec ~mode ~path snapshot =
   match mode with
-  | `Binary ->
+  | Marshal ->
       let oc = open_out path in
       let () = Marshal.to_channel oc snapshot [] in
       close_out oc
-  | `Encoding ->
+  | Data_encoding ->
       if Option.is_none spec then
         raise
           (Invalid_argument "Cannot encode a snapshot without the specification")
@@ -111,12 +113,12 @@ let read_file path =
 let decode ?spec ~mode ~path () =
   if Sys.file_exists path then
     match mode with
-    | `Binary ->
+    | Marshal ->
         let ic = open_in path in
         let x = Marshal.from_channel ic in
         let () = close_in ic in
         x
-    | `Encoding ->
+    | Data_encoding ->
         if Option.is_none spec then
           raise
             (Invalid_argument

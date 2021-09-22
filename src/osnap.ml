@@ -129,12 +129,18 @@ end
 module Runner = struct
   type mode = Interactive | Promote | Error
 
+  type encoding = Snapshot.mode = Marshal | Data_encoding
+
   let mode_from_string s =
     let s = String.lowercase_ascii s in
     match s with
     | "interactive" -> Interactive
     | "promote" -> Promote
     | "error" | _ -> Error
+
+  let encoding_from_string s =
+    let s = String.lowercase_ascii s in
+    match s with "data_encoding" -> Data_encoding | "marshal" | _ -> Marshal
 
   type res =
     [ `Passed of string
@@ -270,7 +276,7 @@ module Runner = struct
         let () = failwith "todo" in
         `Promoted name
 
-  let run mode fmt test =
+  let run _encoding mode fmt test =
     let Test.(Test { spec; path; name; _ }) = test in
     let prev = (* Memory.Snapshot.read path *) failwith "todo" in
     let prev_str =
@@ -289,26 +295,27 @@ module Runner = struct
     | Promote -> promote diff name path next
     | Interactive -> interactive fmt diff name path next
 
-  let run_tests_with_res mode out tests : res * int =
-    let res = List.map (run mode out) tests in
+  let run_tests_with_res encoding mode out tests : res * int =
+    let res = List.map (run encoding mode out) tests in
     let status =
       if List.exists (function `Error _ -> true | _ -> false) res then 1
       else 0
     in
     (res, status)
 
-  let run_tests ?(mode = Error) ?(out = Format.std_formatter) ?(color = true)
-      tests =
-    let (res, status) = run_tests_with_res mode out tests in
+  let run_tests ?(encoding = Marshal) ?(mode = Error)
+      ?(out = Format.std_formatter) ?(color = true) tests =
+    let (res, status) = run_tests_with_res encoding mode out tests in
     let () = pp_res out ~color res in
     status
 
   module Cli = struct
-    type args = { mode : mode; color : bool }
+    type args = { mode : mode; color : bool; encoding : encoding }
 
     let parse argv =
       let mode = ref "" in
       let color = ref false in
+      let encoding = ref "" in
 
       let options =
         Arg.align
@@ -317,11 +324,14 @@ module Runner = struct
             ("-m", Arg.Set_string mode, " set runner mode");
             ("--color", Arg.Set color, " set color output");
             ("-c", Arg.Set color, " set color output");
+            ("-encoding", Arg.Set_string encoding, " set encoding mode");
+            ("-e", Arg.Set_string encoding, " set encoding mode");
           ]
       in
       let () = Arg.parse_argv argv options (fun _ -> ()) "run osnap suite" in
       let mode = mode_from_string !mode in
-      { mode; color = !color }
+      let encoding = encoding_from_string !encoding in
+      { mode; color = !color; encoding }
   end
 
   let run_tests_main ?(argv = Sys.argv) tests =

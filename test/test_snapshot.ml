@@ -54,8 +54,8 @@ let test_encode_marshal =
       let path = "./foo" in
       let expected = snapshot in
       let actual =
-        S.encode ~spec:spec_add ~mode:`Binary ~path snapshot ;
-        S.decode ~spec:spec_add ~mode:`Binary ~path ()
+        S.encode ~spec:spec_add ~mode:Marshal ~path snapshot ;
+        S.decode ~spec:spec_add ~mode:Marshal ~path ()
       in
       qcheck_eq ~pp:(pp spec_add) expected actual)
 
@@ -68,8 +68,8 @@ let test_encode_json =
       let path = "./foo" in
       let expected = snapshot in
       let actual =
-        S.encode ~spec:spec_add ~mode:`Encoding ~path snapshot ;
-        S.decode ~spec:spec_add ~mode:`Encoding ~path ()
+        S.encode ~spec:spec_add ~mode:Data_encoding ~path snapshot ;
+        S.decode ~spec:spec_add ~mode:Data_encoding ~path ()
       in
       qcheck_eq ~pp:(pp spec_add) expected actual)
 
@@ -83,7 +83,8 @@ let test_fail_json_invalid_spec () =
   Alcotest.check_raises
     "encode with incomplete encodings must fail"
     (Invalid_argument "Some encoding fields in the specification are missing")
-    (fun () -> S.encode ~spec:incomplete_spec ~mode:`Encoding ~path snapshot)
+    (fun () ->
+      S.encode ~spec:incomplete_spec ~mode:Data_encoding ~path snapshot)
 
 let test_fail_json_no_spec_encode () =
   let path = "./foo" in
@@ -92,7 +93,7 @@ let test_fail_json_no_spec_encode () =
   Alcotest.check_raises
     "encode with no specification must fail"
     (Invalid_argument "Cannot encode a snapshot without the specification")
-    (fun () -> S.encode ~mode:`Encoding ~path snapshot)
+    (fun () -> S.encode ~mode:Data_encoding ~path snapshot)
 
 let test_fail_json_no_spec_decode () =
   let path = "./foo" in
@@ -102,8 +103,8 @@ let test_fail_json_no_spec_decode () =
     "encode with no specification must fail"
     (Invalid_argument "Cannot decode a snapshot without the specification")
     (fun () ->
-      S.encode ~spec:spec_add ~mode:`Encoding ~path snapshot ;
-      S.decode ~mode:`Encoding ~path () |> ignore)
+      S.encode ~spec:spec_add ~mode:Data_encoding ~path snapshot ;
+      S.decode ~mode:Data_encoding ~path () |> ignore)
 
 let test_create_empty () =
   let actual = S.create ~rand ~name:"empty" ~spec:spec_add ~f:add 0 in

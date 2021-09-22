@@ -202,6 +202,11 @@ module Runner : sig
     | Promote  (** Promote mode, will promote every diff *)
     | Error  (** Error mode, raises error on diff *)
 
+  type encoding =
+    | Marshal  (** Snapshot will be encoded using binaries with Marshal *)
+    | Data_encoding
+        (** Snapshot will be encoded using a JSON with the library Data_encoding *)
+
   (**/**)
 
   type res =
@@ -211,18 +216,25 @@ module Runner : sig
     | `Error of string * string ]
     list
 
-  val run_tests_with_res : mode -> Format.formatter -> Test.t list -> res * int
+  val run_tests_with_res :
+    encoding -> mode -> Format.formatter -> Test.t list -> res * int
 
   (**/**)
 
   (** [run_tests tests] runs suite of [tests] and print its results
 
       @return an error code, [0] if all tests passed, [1] otherwise
+      @param encoding, default is Marshal
       @param mode default is Error
       @param color, if true, colorful output
       *)
   val run_tests :
-    ?mode:mode -> ?out:Format.formatter -> ?color:bool -> Test.t list -> int
+    ?encoding:encoding ->
+    ?mode:mode ->
+    ?out:Format.formatter ->
+    ?color:bool ->
+    Test.t list ->
+    int
 
   (** [run_tests_main] can be used as the main function of a test file. Exits
     with a non-0 code if the tests fail. It refers to {!run_tests} for
@@ -232,7 +244,8 @@ module Runner : sig
       The available options are:
 
       - "--mode <m>" (or "-m <m>") for running mode
-      - "--color <b>" (or "-c" <b>) for activating colors
+      - "--color <b>" (or "-c <b>") for activating colors
+      - "--encoding <e>" (or "-e <e>") for encoding mode
   *)
   val run_tests_main : ?argv:string array -> Test.t list -> 'a
 end
