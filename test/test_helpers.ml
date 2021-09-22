@@ -25,6 +25,8 @@
 
 open Osnap
 
+let rand = Random.State.make [| 42 |]
+
 let small_int =
   Spec.build
     ~printer:string_of_int
