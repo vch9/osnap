@@ -32,12 +32,13 @@ module Test = struct
     spec : ('a -> 'b, 'c) Spec.t;
     f : 'a -> 'b;
     count : int;
-    rand : Random.State.t option;
+    rand : Random.State.t;
   }
 
   type t = Test : ('a, 'b, 'c) cell -> t
 
-  let make ?(count = 10) ?rand ~path ~spec ~name f =
+  let make ?(count = 10) ?(rand = Random.State.make_self_init ()) ~path ~spec
+      ~name f =
     Test { path; spec; f; count; name; rand }
 end
 
