@@ -21,6 +21,7 @@ depends: [
   "qcheck" {>= "0.17" }
   "patdiff" { >= "v0.14.0" }
   "ppx_deriving" { >= "5.2.1" }
+  "data-encoding" { >= "0.4.0" }
   "qcheck-alcotest" { with-test & >= "0.17" }
   "odoc" { with-doc }
   "bisect_ppx" { dev & >= "2.5.0"}
