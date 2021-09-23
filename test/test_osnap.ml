@@ -23,4 +23,193 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-let tests = failwith "todo"
+open Test_helpers
+module Test = Osnap.Test
+module Runner = Osnap.Runner
+module Snapshot = Osnap__Snapshot
+
+let eq_snapshot = Test_snapshot.eq
+
+let eq_res : Runner.res -> Runner.res -> bool =
+  let eq_aux x y =
+    match (x, y) with
+    | (`Passed x, `Passed y) -> x = y
+    | (`Promoted x, `Promoted y) -> x = y
+    | (`Ignored x, `Ignored y) -> x = y
+    | (`Error (x1, y1), `Error (x2, y2)) -> x1 = x2 && y1 = y2
+    | _ -> false
+  in
+  List.equal eq_aux
+
+let pp_res =
+  let pp_aux fmt = function
+    | `Passed s -> Format.fprintf fmt "`Passed %s" s
+    | `Promoted s -> Format.fprintf fmt "`Promoted %s" s
+    | `Ignored s -> Format.fprintf fmt "`Ignored %s" s
+    | `Error (s1, s2) -> Format.fprintf fmt "`Error (%s, %s)" s1 s2
+  in
+  Format.pp_print_list pp_aux
+
+let check_res = Alcotest.of_pp pp_res
+
+let path = "./foo"
+
+and name = "foo"
+
+and spec = spec_add
+
+and count = 5
+
+let test_add seed = Test.make ~count ~rand:(RS.make seed) ~spec ~name ~path add
+
+let snapshot_add seed =
+  Snapshot.create ~rand:(RS.make seed) ~name ~spec ~f:add count
+
+let test_mul seed =
+  Test.make ~count ~rand:(RS.make seed) ~spec ~name ~path Int.mul
+
+let snapshot_mul seed =
+  Snapshot.create ~rand:(RS.make seed) ~name ~spec ~f:Int.mul count
+
+let test_promote_data_encoding_good () =
+  let () = Sys.remove path in
+  let _ =
+    Runner.run_tests ~encoding:Data_encoding ~mode:Promote [ test_add seed ]
+  in
+  let actual = Snapshot.decode ~mode:Data_encoding ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote Data_encoding s; decode s = s"
+    (snapshot_add seed)
+    actual
+
+let test_promote_marshal_good () =
+  let () = Sys.remove path in
+  let _ = Runner.run_tests ~encoding:Marshal ~mode:Promote [ test_add seed ] in
+  let actual = Snapshot.decode ~mode:Marshal ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote Marshal s; decode s = s"
+    (snapshot_add seed)
+    actual
+
+(* Re-running the same test should not change the snapshot *)
+let test_promote_twice () =
+  let () = Sys.remove path in
+  let _ =
+    Runner.run_tests
+      ~encoding:Marshal
+      ~mode:Promote
+      [ test_add seed; test_add [| 0 |] ]
+  in
+  let expected = snapshot_add seed in
+  let actual = Snapshot.decode ~mode:Marshal ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote the same test twice gives the same snapshot"
+    expected
+    actual
+
+(* Promote from a snapshot with the addition to a test with the multiplication should
+   produce the same snapshot as {!snapshot_mul} *)
+let test_promote_changes_snapshot () =
+  let () = Sys.remove path in
+  let _ =
+    Runner.run_tests
+      ~encoding:Marshal
+      ~mode:Promote
+      [ test_add seed; test_mul [| 0 |] ]
+  in
+  let expected = snapshot_mul seed in
+  let actual = Snapshot.decode ~mode:Marshal ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote from add to mul changes the snapshot"
+    expected
+    actual
+
+(* Run without precedent snapshot on mode Error raises an error *)
+let test_error_no_snapshot () =
+  let () = Sys.remove path in
+  let expected =
+    [
+      `Error
+        ( "foo",
+          {|Error: no previous snapshot, new:
+{
+  name = foo;
+  scenarios = [
+	23	5	=	28
+	1	0	=	1
+	0	1	=	1
+	95	22	=	117
+	41	34	=	75
+  ]
+}|}
+        );
+    ]
+  in
+  let actual =
+    Runner.run_tests_with_res
+      Marshal
+      Error
+      Format.std_formatter
+      [ test_add seed ]
+    |> fst
+  in
+  Alcotest.check check_res "should returns errors" expected actual
+
+(* Run Promote then Error the same test passes *)
+let test_promote_error () =
+  let expected = [ `Passed "foo" ] in
+  let _ =
+    Runner.run_tests_with_res
+      Marshal
+      Promote
+      Format.std_formatter
+      [ test_add seed ]
+  in
+  let actual =
+    Runner.run_tests_with_res
+      Marshal
+      Error
+      Format.std_formatter
+      [ test_add seed ]
+    |> fst
+  in
+  Alcotest.check check_res "should pass" expected actual
+
+(* Run Promote then Error with a different scenarios *)
+let test_error_with_diff () =
+  let expected = 1 in
+  let _ =
+    Runner.run_tests_with_res
+      Marshal
+      Promote
+      Format.std_formatter
+      [ test_add seed ]
+  in
+  let actual =
+    Runner.run_tests_with_res
+      Marshal
+      Error
+      Format.std_formatter
+      [ test_mul seed ]
+    |> snd
+  in
+  Alcotest.(check int) "should fail" expected actual
+
+let tests =
+  ( "Osnap",
+    Alcotest.
+      [
+        test_case
+          "test_promote_data_encoding_good"
+          `Quick
+          test_promote_data_encoding_good;
+        test_case "test_promote_marshal_good" `Quick test_promote_marshal_good;
+        test_case "test_promote_twice" `Quick test_promote_twice;
+        test_case
+          "test_promote_changes_snapshot"
+          `Quick
+          test_promote_changes_snapshot;
+        test_case "test_error_no_snapshot" `Quick test_error_no_snapshot;
+        test_case "test_promote_error" `Quick test_promote_error;
+        test_case "test_error_with_diff" `Quick test_error_with_diff;
+      ] )

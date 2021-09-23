@@ -26,5 +26,9 @@
 module Diff = Test_diff
 module Snapshot = Test_snapshot
 module Scenario = Test_scenario
+module Osnap = Test_osnap
 
-let () = Alcotest.run "osnap" [ Diff.tests; Snapshot.tests; Scenario.tests ]
+let () =
+  Alcotest.run
+    "osnap"
+    [ Diff.tests; Snapshot.tests; Scenario.tests; Osnap.tests ]
