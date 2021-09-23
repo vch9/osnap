@@ -195,21 +195,90 @@ let test_error_with_diff () =
   in
   Alcotest.(check int) "should fail" expected actual
 
+let gen_mode_args =
+  let open QCheck.Gen in
+  let args = [ "--mode"; "-m" ] |> List.map pure in
+  let values =
+    [ "error"; "interactive"; "promote" ] |> List.map pure |> fun correct ->
+    frequency [ (5, oneof correct); (1, string_readable) ]
+  in
+  pair (oneof args) values >>= fun (arg, value) -> pure (arg, value)
+
+let gen_encoding_args =
+  let open QCheck.Gen in
+  let args = [ "--color"; "-c" ] |> List.map pure in
+  let values =
+    [ "true"; "false" ] |> List.map pure |> fun correct ->
+    frequency [ (5, oneof correct); (1, string_readable) ]
+  in
+  pair (oneof args) values >>= fun (arg, b) -> pure (arg, b)
+
+let gen_color_args =
+  let open QCheck.Gen in
+  let args = [ "--encoding"; "-e" ] |> List.map pure in
+  let values =
+    [ "marshal"; "data_encoding" ] |> List.map pure |> fun correct ->
+    frequency [ (5, oneof correct); (1, string_readable) ]
+  in
+  pair (oneof args) values >>= fun (arg, value) -> pure (arg, value)
+
+let arb_mode_args = QCheck.make gen_mode_args
+
+let arb_encoding_args = QCheck.make gen_encoding_args
+
+let arb_color_args = QCheck.make gen_color_args
+
+let test_parse_mode =
+  QCheck.Test.make ~name:"CLI parse mode" arb_mode_args (fun (arg, mode) ->
+      let argv = [| arg; mode |] in
+      let args = Osnap.Runner.Cli.parse argv in
+
+      (mode = "error" && args.mode = Error)
+      || (mode = "promote" && args.mode = Promote)
+      || (mode = "interactive" && args.mode = Interactive)
+      || args.mode = Error)
+
+let test_parse_color =
+  QCheck.Test.make ~name:"CLI parse color" arb_color_args (fun (arg, color) ->
+      let argv = [| arg; color |] in
+      let args = Osnap.Runner.Cli.parse argv in
+
+      (color = "true" && args.color)
+      || (color = "false" && not args.color)
+      || not args.color)
+
+let test_parse_encoding =
+  QCheck.Test.make
+    ~name:"CLI parse encoding"
+    arb_encoding_args
+    (fun (arg, encoding) ->
+      let argv = [| arg; encoding |] in
+      let args = Osnap.Runner.Cli.parse argv in
+
+      (encoding = "marshal" && args.encoding = Marshal)
+      || (encoding = "data_encoding" && args.encoding = Data_encoding)
+      || args.encoding = Data_encoding)
+
+let qcheck_tests =
+  [ test_parse_mode; test_parse_color ]
+  |> List.map (QCheck_alcotest.to_alcotest ~rand)
+
 let tests =
-  ( "Osnap",
-    Alcotest.
-      [
-        test_case
-          "test_promote_data_encoding_good"
-          `Quick
-          test_promote_data_encoding_good;
-        test_case "test_promote_marshal_good" `Quick test_promote_marshal_good;
-        test_case "test_promote_twice" `Quick test_promote_twice;
-        test_case
-          "test_promote_changes_snapshot"
-          `Quick
-          test_promote_changes_snapshot;
-        test_case "test_error_no_snapshot" `Quick test_error_no_snapshot;
-        test_case "test_promote_error" `Quick test_promote_error;
-        test_case "test_error_with_diff" `Quick test_error_with_diff;
-      ] )
+  Alcotest.
+    [
+      test_case
+        "test_promote_data_encoding_good"
+        `Quick
+        test_promote_data_encoding_good;
+      test_case "test_promote_marshal_good" `Quick test_promote_marshal_good;
+      test_case "test_promote_twice" `Quick test_promote_twice;
+      test_case
+        "test_promote_changes_snapshot"
+        `Quick
+        test_promote_changes_snapshot;
+      test_case "test_error_no_snapshot" `Quick test_error_no_snapshot;
+      test_case "test_promote_error" `Quick test_promote_error;
+      test_case "test_error_with_diff" `Quick test_error_with_diff;
+    ]
+
+let tests = ("Osnap", qcheck_tests @ tests)

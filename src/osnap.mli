@@ -236,6 +236,16 @@ module Runner : sig
     Test.t list ->
     int
 
+  (**/**)
+
+  module Cli : sig
+    type args = { mode : mode; color : bool; encoding : encoding }
+
+    val parse : string array -> args
+  end
+
+  (**/**)
+
   (** [run_tests_main] can be used as the main function of a test file. Exits
     with a non-0 code if the tests fail. It refers to {!run_tests} for
     actually running tests after a CLI options have been parsed
