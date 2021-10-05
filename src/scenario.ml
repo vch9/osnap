@@ -23,21 +23,29 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Spec
 module Gen = QCheck.Gen
 
+type 'r res = ('r, string) result
+
 type ('fn, 'r) t =
-  | Res : 'r -> ('r, 'r) t
+  | Res : 'r res -> ('r, 'r) t
   | Cons : 'a * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 let rec spec_to_scenario :
     type fn r. rand:Random.State.t -> (fn, r) Spec.t -> fn -> (fn, r) t =
  fun ~rand spec f ->
   match spec with
+  | Arrow ({ gen; _ }, Result _) -> (
+      let x = Gen.generate1 ~rand gen in
+      try
+        let f = f x in
+        Cons (x, Res (Ok f))
+      with e -> Cons (x, Res (Error (Printexc.to_string e))))
   | Arrow ({ gen; _ }, spec) ->
       let x = Gen.generate1 ~rand gen in
-      Cons (x, spec_to_scenario ~rand spec (f x))
-  | Result _ -> Res f
+      let f = f x in
+      Cons (x, spec_to_scenario ~rand spec f)
+  | Result _ -> Res (Ok f)
 
 let rec encoding_scenario :
     type fn r. (fn, r) Spec.t -> (fn, r) t Data_encoding.encoding =
@@ -48,7 +56,22 @@ let rec encoding_scenario :
   | Result { encoding; _ } ->
       assert (Option.is_some encoding) ;
       let encoding = Option.get encoding in
-      conv (function Res x -> x | _ -> assert false) (fun x -> Res x) encoding
+
+      union
+        [
+          case
+            ~title:"Ok"
+            (Tag 0)
+            encoding
+            (function Res (Ok x) -> Some x | _ -> None)
+            (fun x -> Res (Ok x));
+          case
+            ~title:"Error"
+            (Tag 1)
+            string
+            (function Res (Error x) -> Some x | _ -> None)
+            (fun x -> Res (Error x));
+        ]
   | Arrow ({ encoding; _ }, spec) ->
       assert (Option.is_some encoding) ;
       let encoding = Option.get encoding in
@@ -60,7 +83,8 @@ let rec encoding_scenario :
 let rec to_string : type fn r. (fn, r) Spec.t -> (fn, r) t -> string =
  fun spec scenario ->
   match (spec, scenario) with
-  | (Result { printer; _ }, Res r) -> Format.sprintf "=\t%s" (printer r)
+  | (Result { printer; _ }, Res (Ok r)) -> Format.sprintf "=\t%s" (printer r)
+  | (Result _, Res (Error exn)) -> Format.sprintf "=\tExn %s" exn
   | (Arrow ({ printer; _ }, spec), Cons (fn, scenario)) ->
       let printer = Spec.default_printer printer in
       Format.sprintf "%s\t%s" (printer fn) (to_string spec scenario)
@@ -71,5 +95,8 @@ let pp fmt spec scenario = Format.fprintf fmt "%s" (to_string spec scenario)
 let rec reapply : type fn r. (fn, r) t -> fn -> (fn, r) t =
  fun scenario f ->
   match scenario with
-  | Res _ -> Res f
+  | Res _ -> ( try Res (Ok f) with e -> Res (Error (Printexc.to_string e)))
+  | Cons (x, Res _) -> (
+      try Cons (x, Res (Ok (f x)))
+      with e -> Cons (x, Res (Error (Printexc.to_string e))))
   | Cons (x, scenario) -> Cons (x, reapply scenario (f x))

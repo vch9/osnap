@@ -28,8 +28,10 @@
     We then use {!args} to create a {!t}, stored in-memory as the
     regression tests. *)
 
+type 'r res = ('r, string) result
+
 type ('fn, 'r) t =
-  | Res : 'r -> ('r, 'r) t
+  | Res : 'r res -> ('r, 'r) t
   | Cons : 'a * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 (** [spec_to_scenario spec f] instantiate arguments values using generators inside [spec],
