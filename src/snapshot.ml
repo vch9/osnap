@@ -128,7 +128,7 @@ let decode ?spec ~mode ~path () =
           let () = close_in ic in
           x
         with Failure s -> raise (MarshalError s))
-    | Data_encoding ->
+    | Data_encoding -> (
         if Option.is_none spec then
           raise
             (Invalid_argument
@@ -144,7 +144,8 @@ let decode ?spec ~mode ~path () =
             | Ok x -> x
             | Error er -> raise (DataEncodingError er)
           in
-          Data_encoding.Json.destruct (encoding spec) json
+          try Data_encoding.Json.destruct (encoding spec) json
+          with e -> raise (DataEncodingError (Printexc.to_string e)))
   else raise (SnapshotNotFound (path ^ " does not exists"))
 
 let decode_opt ?spec ~mode ~path () =
