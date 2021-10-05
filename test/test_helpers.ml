@@ -36,7 +36,7 @@ let small_int =
     ~encoding:Data_encoding.int31
     QCheck.Gen.small_int
 
-let res_int = Spec.build_result ~encoding:Data_encoding.int31 string_of_int
+let res_int = Spec.Result.int
 
 let add = ( + )
 

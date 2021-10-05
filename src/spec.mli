@@ -61,12 +61,44 @@ type 'a spec = {
   encoding : 'a Data_encoding.t option;
 }
 
-type 'a result = { printer : 'a printer; encoding : 'a Data_encoding.t option }
+module Result : sig
+  type 'a t = { printer : 'a printer; encoding : 'a Data_encoding.t option }
+
+  (** [unit] t *)
+  val unit : unit t
+
+  (** [bool] t *)
+  val bool : bool t
+
+  (** [float] t *)
+  val float : float t
+
+  (** [int] t *)
+  val int : int t
+
+  (** [char] t *)
+  val char : char t
+
+  (** [string] t *)
+  val string : string t
+
+  (** [option t] creates an option t for [t] *)
+  val option : 'a t -> 'a option t
+
+  (** [array t] creates an array t for [t] *)
+  val array : 'a t -> 'a array t
+
+  (** [list t] creates a list t for [t] *)
+  val list : 'a t -> 'a list t
+
+  (** [build ?encoding printer] builds an ['a result] with optionally an encoding *)
+  val build : ?encoding:'a encoding -> 'a printer -> 'a t
+end
 
 (** [t] is the specification type, describing a function.
     Thus [t] declaration must end with {! (^>>) }. *)
 type ('fn, 'r) t =
-  | Result : 'r result -> ('r, 'r) t
+  | Result : 'r Result.t -> ('r, 'r) t
   | Arrow : 'a spec * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
 (** [default_printer printer] creates a default printer if [printer] is absent *)
@@ -74,9 +106,6 @@ val default_printer : ('a -> string) option -> 'a -> string
 
 (** [build ?printer ?encoding gen] builds an ['a spec] with optional fields *)
 val build : ?printer:'a printer -> ?encoding:'a encoding -> 'a gen -> 'a spec
-
-(** [build_result ?encoding printer] builds an ['a result] with optionally an encoding *)
-val build_result : ?encoding:'a encoding -> 'a printer -> 'a result
 
 (** [of_gen gen] creates an ['a spec] with no printer *)
 val of_gen : 'a gen -> 'a spec
@@ -112,7 +141,7 @@ val list : 'a spec -> 'a list spec
 val ( ^> ) : 'a spec -> ('b, 'c) t -> ('a -> 'b, 'c) t
 
 (** [(^>>) x res] combines a specification and printer for the result type *)
-val ( ^>> ) : 'a spec -> 'b result -> ('a -> 'b, 'b) t
+val ( ^>> ) : 'a spec -> 'b Result.t -> ('a -> 'b, 'b) t
 
 (** [can_encode spec] returns true if every spec in [spec] can be encoded *)
 val can_encode : ('fn, 'r) t -> bool

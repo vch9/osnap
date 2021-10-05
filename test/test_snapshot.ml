@@ -75,7 +75,7 @@ let test_encode_json =
 
 let test_fail_json_invalid_spec () =
   let incomplete_spec =
-    Osnap.Spec.(int ^> of_gen QCheck.Gen.int ^>> build_result string_of_int)
+    Osnap.Spec.(int ^> of_gen QCheck.Gen.int ^>> Result.int)
   in
   let path = "./foo" in
   let snapshot = S.create ~rand ~name:"" ~spec:incomplete_spec ~f:add 5 in

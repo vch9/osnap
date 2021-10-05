@@ -18,7 +18,7 @@ let test =
         encoding = None;
       }
   in
-  let spec = Spec.(small_int ^> small_int ^>> build_result string_of_int) in
+  let spec = Spec.(small_int ^> small_int ^>> Result.int) in
   let path = ".osnap/exponentiation" in
 
   Test.make ~spec ~path ~count:5 ~name:"exponentiation" binary_expo
