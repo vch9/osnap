@@ -110,14 +110,22 @@ let read_file path =
     close_in ic ;
     List.rev !lines |> String.concat ""
 
+exception SnapshotNotFound of string
+
+exception DataEncodingError of string
+
+exception MarshalError of string
+
 let decode ?spec ~mode ~path () =
   if Sys.file_exists path then
     match mode with
-    | Marshal ->
-        let ic = open_in path in
-        let x = Marshal.from_channel ic in
-        let () = close_in ic in
-        x
+    | Marshal -> (
+        try
+          let ic = open_in path in
+          let x = Marshal.from_channel ic in
+          let () = close_in ic in
+          x
+        with Failure s -> raise (MarshalError s))
     | Data_encoding ->
         if Option.is_none spec then
           raise
@@ -126,10 +134,31 @@ let decode ?spec ~mode ~path () =
         else
           let spec = Option.get spec in
           let json = read_file path |> Data_encoding.Json.from_string in
-          let json = match json with Ok x -> x | Error _ -> failwith "todo" in
+          let json =
+            match json with
+            | Ok x -> x
+            | Error er -> raise (DataEncodingError er)
+          in
           Data_encoding.Json.destruct (encoding spec) json
-  else raise (Invalid_argument (path ^ " does not exists"))
+  else raise (SnapshotNotFound (path ^ " does not exists"))
 
 let decode_opt ?spec ~mode ~path () =
-  (* FIXME: catch every exception is not a good practice *)
-  try decode ?spec ~mode ~path () |> Option.some with _ -> None
+  try decode ?spec ~mode ~path () |> Option.some with
+  | SnapshotNotFound _ -> None
+  | DataEncodingError s ->
+      let () =
+        Printf.printf
+          "Error: snapshot at %s could not be decoded using Data_encoding:\n\
+           \t%s"
+          path
+          s
+      in
+      exit 1
+  | MarshalError s ->
+      let () =
+        Printf.printf
+          "Error: snapshot at %s could not be decoded using Marshal:\n\t%s"
+          path
+          s
+      in
+      exit 1
