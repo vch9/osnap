@@ -114,6 +114,8 @@ exception SnapshotNotFound of string
 
 exception DataEncodingError of string
 
+exception DataEncodingMissing
+
 exception MarshalError of string
 
 let decode ?spec ~mode ~path () =
@@ -133,6 +135,9 @@ let decode ?spec ~mode ~path () =
                "Cannot decode a snapshot without the specification")
         else
           let spec = Option.get spec in
+          let () =
+            if not (Spec.can_encode spec) then raise DataEncodingMissing
+          in
           let json = read_file path |> Data_encoding.Json.from_string in
           let json =
             match json with
@@ -160,5 +165,10 @@ let decode_opt ?spec ~mode ~path () =
           "Error: snapshot at %s could not be decoded using Marshal:\n\t%s"
           path
           s
+      in
+      exit 1
+  | DataEncodingMissing ->
+      let () =
+        Printf.printf "Error: encoding are missing in the specification"
       in
       exit 1
