@@ -98,18 +98,6 @@ let encode ?spec ~mode ~path snapshot =
             (Invalid_argument
                "Some encoding fields in the specification are missing")
 
-let read_file path =
-  let lines = ref [] in
-  let ic = open_in path in
-  try
-    while true do
-      lines := input_line ic :: !lines
-    done ;
-    assert false
-  with End_of_file ->
-    close_in ic ;
-    List.rev !lines |> String.concat ""
-
 exception SnapshotNotFound of string
 
 exception DataEncodingError of string
@@ -138,7 +126,7 @@ let decode ?spec ~mode ~path () =
           let () =
             if not (Spec.can_encode spec) then raise DataEncodingMissing
           in
-          let json = read_file path |> Data_encoding.Json.from_string in
+          let json = Common.read_file path |> Data_encoding.Json.from_string in
           let json =
             match json with
             | Ok x -> x

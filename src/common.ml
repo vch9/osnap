@@ -40,3 +40,23 @@ let opt_path name =
 
 let full_path path =
   if Filename.is_relative path then Sys.getcwd () ^ path else path
+
+let read_file path =
+  let lines = ref [] in
+  let ic = open_in path in
+  try
+    while true do
+      lines := input_line ic :: !lines
+    done ;
+    assert false
+  with End_of_file ->
+    close_in ic ;
+    List.rev !lines |> String.concat ""
+
+let write path s =
+  let dir = Filename.dirname path in
+  if (not (Sys.file_exists path)) && not (Sys.file_exists dir) then
+    Unix.mkdir dir 0o755 ;
+  let oc = open_out path in
+  let () = output_string oc s in
+  close_out oc
