@@ -128,22 +128,7 @@ let test_promote_changes_snapshot () =
 let test_error_no_snapshot () =
   let () = Sys.remove path in
   let expected =
-    [
-      `Error
-        ( "foo",
-          {|Error: no previous snapshot, new:
-{
-  name = foo;
-  scenarios = [
-	23	5	=	28
-	1	0	=	1
-	0	1	=	1
-	95	22	=	117
-	41	34	=	75
-  ]
-}|}
-        );
-    ]
+    [ `Error ("foo", Printf.sprintf "Error: no previous snapshot at %s" path) ]
   in
   let actual =
     Runner.run_tests_with_res

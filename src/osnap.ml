@@ -192,11 +192,11 @@ module Runner = struct
           `Promoted name
         else `Ignored name
 
-  let error diff name =
+  let error ~path diff name =
     match diff with
     | Diff.Same -> `Passed name
-    | Diff.(New s) ->
-        let msg = Printf.sprintf "Error: no previous snapshot, new:\n%s" s in
+    | Diff.(New _) ->
+        let msg = Printf.sprintf "Error: no previous snapshot at %s" path in
         `Error (name, msg)
     | Diff.(Diff s) -> `Error (name, s)
 
@@ -213,6 +213,7 @@ module Runner = struct
 
     let prev = Snapshot.decode_opt ~spec ~mode:encoding ~path () in
 
+    (* TODO: maybe next should ne be created if (prev = None && mode = Error) *)
     let next =
       match prev with
       | None -> Snapshot.create ~rand ~name ~spec ~f count
@@ -228,7 +229,7 @@ module Runner = struct
         (Snapshot.to_string spec next)
     in
     match mode with
-    | Error -> error diff name
+    | Error -> error ~path diff name
     | Promote -> promote diff name encoding spec path next
     | Interactive -> interactive fmt diff name encoding spec path next
 
