@@ -26,7 +26,7 @@ jobs:
         run: opam pin -n .
 
       - name: Deps
-        run: opam install -d . --deps-only
+        run: opam install -d . --deps-only --with-test
 
       - name: Build
         run: opam exec -- dune build @doc
