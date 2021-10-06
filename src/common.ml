@@ -39,7 +39,7 @@ let opt_path name =
   | _ -> cwd ^ sep ^ name
 
 let full_path path =
-  if Filename.is_relative path then Sys.getcwd () ^ path else path
+  if Filename.is_relative path then Sys.getcwd () ^ sep ^ path else path
 
 let read_file path =
   let lines = ref [] in

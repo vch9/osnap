@@ -36,7 +36,7 @@ let eq_res : Runner.res -> Runner.res -> bool =
     | (`Passed x, `Passed y) -> x = y
     | (`Promoted x, `Promoted y) -> x = y
     | (`Ignored x, `Ignored y) -> x = y
-    | (`Error (x1, y1), `Error (x2, y2)) -> x1 = x2 && y1 = y2
+    | (`Error (x1, _), `Error (x2, _)) -> x1 = x2
     | _ -> false
   in
   List.equal eq_aux
@@ -127,7 +127,7 @@ let test_promote_changes_snapshot () =
 (* Run without precedent snapshot on mode Error raises an error *)
 let test_error_no_snapshot () =
   let () = Sys.remove path in
-  let expected =
+  let expected : Runner.res =
     [ `Error ("foo", Printf.sprintf "Error: no previous snapshot at %s" path) ]
   in
   let actual =
@@ -138,7 +138,7 @@ let test_error_no_snapshot () =
       [ test_add seed ]
     |> fst
   in
-  Alcotest.check check_res "should returns errors" expected actual
+  Alcotest.(check bool) "should returns errors" true (eq_res expected actual)
 
 (* Run Promote then Error the same test passes *)
 let test_promote_error () =

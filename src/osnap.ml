@@ -197,7 +197,11 @@ module Runner = struct
     match diff with
     | Diff.Same -> `Passed name
     | Diff.(New _) ->
-        let msg = Printf.sprintf "Error: no previous snapshot at %s" path in
+        let msg =
+          Printf.sprintf
+            "Error: no previous snapshot at %s"
+            (Common.full_path path)
+        in
         `Error (name, msg)
     | Diff.(Diff s) -> `Error (name, s)
 
