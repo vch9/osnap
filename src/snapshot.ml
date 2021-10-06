@@ -75,28 +75,25 @@ let create_from_snapshot (Snapshot { name; scenarios }) f =
   Snapshot { name; scenarios }
 
 let encode ?spec ~mode ~path snapshot =
-  match mode with
-  | Marshal ->
-      let oc = open_out path in
-      let () = Marshal.to_channel oc snapshot [] in
-      close_out oc
-  | Data_encoding ->
-      if Option.is_none spec then
-        raise
-          (Invalid_argument "Cannot encode a snapshot without the specification")
-      else
-        let spec = Option.get spec in
-        if Spec.can_encode spec then
-          let json = Data_encoding.Json.construct (encoding spec) snapshot in
-          let oc = open_out path in
-          let () =
-            Printf.fprintf oc "%s" @@ Data_encoding.Json.to_string json
-          in
-          close_out oc
-        else
+  let buf =
+    match mode with
+    | Marshal -> Marshal.to_string snapshot []
+    | Data_encoding ->
+        if Option.is_none spec then
           raise
             (Invalid_argument
-               "Some encoding fields in the specification are missing")
+               "Cannot encode a snapshot without the specification")
+        else
+          let spec = Option.get spec in
+          if Spec.can_encode spec then
+            let json = Data_encoding.Json.construct (encoding spec) snapshot in
+            Data_encoding.Json.to_string json
+          else
+            raise
+              (Invalid_argument
+                 "Some encoding fields in the specification are missing")
+  in
+  Common.write path buf
 
 exception SnapshotNotFound of string
 
