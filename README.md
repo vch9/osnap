@@ -45,11 +45,18 @@ In the above, we first provide a naive implementation of the exponentiation.
 Then, we create a test with the according specification using `Osnap` combinator.
 
 ```
-exponentiation  12  26  =>  -103582791429521408
-exponentiation  2  1  =>  2
-exponentiation  2  6  =>  64
-exponentiation  2  6  =>  64
-exponentiation  6  7  =>  279936
+{
+  name = exponentiation;
+  scenarios = [
+	35	66	=	4292184014870020553
+	0	3	=	0
+	9	3	=	729
+	3	7	=	2187
+	67	9	=	27206534396294947
+  ]
+}
+
+Do you want to promote these diff? [Y\n]
 ```
 
 As we agree with our function result, we promote the change by typing `Y`.
