@@ -1,5 +1,5 @@
 (library
  (name osnap)
  (public_name osnap)
- (libraries qcheck patdiff data-encoding)
+ (libraries str qcheck patdiff data-encoding)
  (instrumentation (backend bisect_ppx)))

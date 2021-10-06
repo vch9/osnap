@@ -89,9 +89,10 @@ module Test : sig
   type t
 
   (** [make path spec name f] builds a test
+
       @param count number of application
       @param rand random state
-      @param path where snapshots are stored 
+      @param path where snapshots are stored
       @param spec function specification
       @param name function name
       @param f function to snapshot
@@ -99,7 +100,7 @@ module Test : sig
   val make :
     ?count:int ->
     ?rand:Random.State.t ->
-    path:string ->
+    ?path:string ->
     spec:('a -> 'b, 'c) Spec.t ->
     name:string ->
     ('a -> 'b) ->

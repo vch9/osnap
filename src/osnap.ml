@@ -37,8 +37,9 @@ module Test = struct
 
   type t = Test : ('a, 'b, 'c) cell -> t
 
-  let make ?(count = 10) ?(rand = Random.State.make_self_init ()) ~path ~spec
+  let make ?(count = 10) ?(rand = Random.State.make_self_init ()) ?path ~spec
       ~name f =
+    let path = Option.value ~default:(Common.opt_path name) path in
     Test { path; spec; f; count; name; rand }
 end
 
