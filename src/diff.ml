@@ -33,17 +33,20 @@ let pp fmt = function
   | Diff s -> Format.pp_print_string fmt @@ "Diff " ^ s
   | New s -> Format.pp_print_string fmt @@ "New " ^ s
 
-(** [diff prev next] computes diff between [prev] and [next] using Patdiff
-    If prev is absent, returns [New [next]] *)
-let diff prev next =
-  let config = Patdiff.Configuration.default in
+let diff ~path ~prev ~next =
   match prev with
   | None -> New next
   | Some prev -> (
-      let open Patdiff_kernel.Diff_input in
-      let prev = { name = "prev"; text = prev } in
-      let next = { name = "next"; text = next } in
-
-      match Patdiff__Compare_core.diff_strings ~prev ~next config with
-      | `Same -> Same
-      | `Different s -> Diff s)
+      let cmd =
+        Printf.sprintf
+          "git diff --exit-code --no-index %s %s --output=%s"
+          prev
+          next
+          path
+      in
+      match Unix.system cmd with
+      | WEXITED 0 -> Same
+      | WEXITED _ ->
+          let diff = Common.read_file path in
+          Diff diff
+      | WSIGNALED _ | WSTOPPED _ -> failwith (cmd ^ " was killed or stopped"))

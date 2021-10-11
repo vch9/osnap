@@ -46,7 +46,7 @@ let read_file path =
   let ic = open_in path in
   try
     while true do
-      lines := input_line ic :: !lines
+      lines := (input_line ic ^ "\n") :: !lines
     done ;
     assert false
   with End_of_file ->

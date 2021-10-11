@@ -30,6 +30,9 @@ type t =
 
 val pp : Format.formatter -> t -> unit
 
-(** [diff prev next] computes diff between [prev] and [next] using Patdiff
-    If prev is absent, returns [New [next]] *)
-val diff : string option -> string -> t
+(** [diff prev next] computes diff between [prev] and [next] using diff
+
+    @param where to store the diff's result
+    @param prev optional path of previous snapshot
+    @param next path of the next snapshot *)
+val diff : path:string -> prev:string option -> next:string -> t

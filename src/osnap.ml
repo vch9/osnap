@@ -104,8 +104,8 @@ module Runner = struct
     else Format.pp_print_string fmt s
 
   let pp_error fmt ~color = function
-    | `Error (_, x) ->
-        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure color sep x
+    | `Error (_, msg) ->
+        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure color sep msg
     | _ -> ()
 
   let pp_recap fmt ~color passed promoted ignored errors =
@@ -167,7 +167,7 @@ module Runner = struct
       fmt
       "@.@.%a@."
       pp_print_string
-      "Do you want to promote these diff? [Y\\n]"
+      "Do you want to promote this new snapshot? [Y\\n]"
 
   let rec take_input fmt () =
     let () = input_msg fmt () in
@@ -176,24 +176,17 @@ module Runner = struct
     | "n" -> false
     | _ -> take_input fmt ()
 
-  (* TODO: labelled arguments would be easier *)
-  let interactive fmt diff name encoding spec path snapshot =
+  let interactive ~path ~diff ~name fmt encoding spec (snapshot, snapshot_str) =
     match diff with
     | Diff.Same -> `Passed name
     | _ ->
-        let msg =
-          match diff with
-          | Diff.(New s) -> s
-          | Diff.(Diff s) -> s
-          | _ -> assert false
-        in
-        let () = Format.pp_print_string fmt msg in
+        let () = Format.pp_print_string fmt snapshot_str in
         if take_input fmt () then
           let () = Snapshot.encode ~spec ~mode:encoding ~path snapshot in
           `Promoted name
         else `Ignored name
 
-  let error ~path diff name =
+  let error ~path ~diff ~name =
     match diff with
     | Diff.Same -> `Passed name
     | Diff.(New _) ->
@@ -203,40 +196,77 @@ module Runner = struct
             (Common.full_path path)
         in
         `Error (name, msg)
-    | Diff.(Diff s) -> `Error (name, s)
+    | Diff.Diff diff -> `Error (name, diff)
 
-  (* TODO: labelled arguments would be easier *)
-  let promote diff name encoding spec path snapshot =
+  let promote ~path ~diff ~name encoding spec snapshot =
     match diff with
     | Diff.Same -> `Passed name
-    | Diff.(New _) | Diff.(Diff _) ->
+    | Diff.(New _) | Diff.Diff _ ->
         let () = Snapshot.encode ~spec ~mode:encoding ~path snapshot in
         `Promoted name
+
+  let map o f = Option.map f o
+
+  let ( >>| ) = map
+
+  type ('fn, 'r) intermediate_snapshot = {
+    snap : ('fn, 'r) Snapshot.t;
+    text : string;
+    path : string;
+  }
+
+  let prev spec mode path : ('a, 'b) intermediate_snapshot option =
+    Snapshot.decode_opt ~spec ~mode ~path () >>| fun snap ->
+    Snapshot.to_string spec snap |> fun text ->
+    path ^ ".prev" |> fun path -> { snap; text; path }
+
+  let next ~f ~rand ~name ~spec ~count ~path prev =
+    let snap =
+      match prev with
+      | Some { snap; _ } -> Snapshot.create_from_snapshot snap f
+      | None -> Snapshot.create ~rand ~name ~spec ~f count
+    in
+    let text = Snapshot.to_string spec snap in
+    let path = path ^ ".next" in
+    { snap; text; path }
+
+  let diff path prev next =
+    let diff_path = path ^ ".diff" in
+    ( Diff.diff
+        ~path:diff_path
+        ~prev:(prev >>| fun prev -> prev.path)
+        ~next:next.path,
+      diff_path )
+
+  let prepare_run prev next =
+    Option.iter (fun prev -> Common.write prev.path prev.text) prev ;
+    Common.write next.path next.text
+
+  let clean_run prev next diff_path =
+    let clean fd = if Sys.file_exists fd then Sys.remove fd in
+    Option.iter (fun prev -> clean prev.path) prev ;
+    clean next.path ;
+    clean diff_path
 
   let run encoding mode fmt test =
     let Test.(Test { spec; path; name; rand; count; f; _ }) = test in
 
-    let prev = Snapshot.decode_opt ~spec ~mode:encoding ~path () in
+    let prev = prev spec encoding path in
+    let next = next ~f ~rand ~name ~spec ~count ~path prev in
+    let () = prepare_run prev next in
 
-    (* TODO: maybe next should ne be created if (prev = None && mode = Error) *)
-    let next =
-      match prev with
-      | None -> Snapshot.create ~rand ~name ~spec ~f count
-      | Some prev -> Snapshot.create_from_snapshot prev f
+    let (diff, diff_path) = diff path prev next in
+
+    let res =
+      match mode with
+      | Error -> error ~path ~diff ~name
+      | Promote -> promote ~path ~diff ~name encoding spec next.snap
+      | Interactive ->
+          interactive ~path ~diff ~name fmt encoding spec (next.snap, next.text)
     in
 
-    let diff =
-      Diff.diff
-        (Option.fold
-           ~none:None
-           ~some:(fun snap -> Snapshot.to_string spec snap |> Option.some)
-           prev)
-        (Snapshot.to_string spec next)
-    in
-    match mode with
-    | Error -> error ~path diff name
-    | Promote -> promote diff name encoding spec path next
-    | Interactive -> interactive fmt diff name encoding spec path next
+    let () = clean_run prev next diff_path in
+    res
 
   let run_tests_with_res encoding mode out tests : res * int =
     let res = List.map (run encoding mode out) tests in

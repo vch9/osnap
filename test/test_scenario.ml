@@ -47,12 +47,12 @@ let test_raises_exception () =
   let spec = Osnap.Spec.(small_int ^>> Result.int) in
   let f _ = failwith "error" in
   let actual = S.spec_to_scenario ~rand spec f in
-  let expected = S.(Cons (5, Res (Error "(Failure error)"))) in
+  let expected = S.(Cons (5, Res (Error "Failure(\"error\")"))) in
   Alcotest.check (eq spec) "exception is catched" expected actual
 
 let test_reapply_exception () =
   let spec = Osnap.Spec.(small_int ^>> Result.int) in
-  let scenario = S.(Cons (5, Res (Error "(Failure error)"))) in
+  let scenario = S.(Cons (5, Res (Error "Failure(\"error\")"))) in
   let f _ = failwith "error" in
   let actual = S.reapply scenario f in
   Alcotest.check (eq spec) "reapply with exceptions" scenario actual
