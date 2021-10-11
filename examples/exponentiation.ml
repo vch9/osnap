@@ -13,14 +13,13 @@ let test =
   let small_int =
     Spec.
       {
-        gen = QCheck.Gen.small_int;
+        gen = QCheck.Gen.(0 -- 5);
         printer = Some string_of_int;
-        encoding = None;
+        encoding = Some Data_encoding.int31;
       }
   in
   let spec = Spec.(small_int ^> small_int ^>> Result.int) in
-  let path = ".osnap/exponentiation" in
 
-  Test.make ~spec ~path ~count:5 ~name:"exponentiation" binary_expo
+  Test.make ~spec ~count:5 ~name:"exponentiation" binary_expo
 
-let _ = Osnap.Runner.(run_tests ~mode:Interactive [ test ])
+let _ = Osnap.Runner.(run_tests ~encoding:Data_encoding ~mode:Error [ test ])
