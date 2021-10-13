@@ -31,6 +31,10 @@ type ('fn, 'r) t =
   | Res : 'r res -> ('r, 'r) t
   | Cons : 'a * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
+let store_exn e =
+  let s = Printexc.to_string_default e in
+  Res (Error s)
+
 let rec spec_to_scenario :
     type fn r. rand:Random.State.t -> (fn, r) Spec.t -> fn -> (fn, r) t =
  fun ~rand spec f ->
@@ -40,7 +44,7 @@ let rec spec_to_scenario :
       try
         let f = f x in
         Cons (x, Res (Ok f))
-      with e -> Cons (x, Res (Error (Printexc.to_string e))))
+      with e -> Cons (x, store_exn e))
   | Arrow ({ gen; _ }, spec) ->
       let x = Gen.generate1 ~rand gen in
       let f = f x in
@@ -84,7 +88,7 @@ let rec to_string : type fn r. (fn, r) Spec.t -> (fn, r) t -> string =
  fun spec scenario ->
   match (spec, scenario) with
   | (Result { printer; _ }, Res (Ok r)) -> Format.sprintf "=\t%s" (printer r)
-  | (Result _, Res (Error exn)) -> Format.sprintf "=\tExn %s" exn
+  | (Result _, Res (Error exn)) -> Format.sprintf "=\t%s" exn
   | (Arrow ({ printer; _ }, spec), Cons (fn, scenario)) ->
       let printer = Spec.default_printer printer in
       Format.sprintf "%s\t%s" (printer fn) (to_string spec scenario)
@@ -95,8 +99,7 @@ let pp fmt spec scenario = Format.fprintf fmt "%s" (to_string spec scenario)
 let rec reapply : type fn r. (fn, r) t -> fn -> (fn, r) t =
  fun scenario f ->
   match scenario with
-  | Res _ -> ( try Res (Ok f) with e -> Res (Error (Printexc.to_string e)))
+  | Res _ -> ( try Res (Ok f) with e -> store_exn e)
   | Cons (x, Res _) -> (
-      try Cons (x, Res (Ok (f x)))
-      with e -> Cons (x, Res (Error (Printexc.to_string e))))
+      try Cons (x, Res (Ok (f x))) with e -> Cons (x, store_exn e))
   | Cons (x, scenario) -> Cons (x, reapply scenario (f x))
