@@ -20,7 +20,7 @@ depends: [
   "ocaml" {>= "4.12.0" }
   "ppx_deriving" { >= "5.2.1" }
   "data-encoding" { >= "0.4" }
-  "qcheck" { >= "0.17"}
+  "qcheck-core" { >= "0.17"}
   "qcheck-alcotest" { with-test & = "0.17" }
   "odoc" { with-doc }
   "bisect_ppx" { dev & >= "2.5.0"}

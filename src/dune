@@ -1,5 +1,5 @@
 (library
  (name osnap)
  (public_name osnap)
- (libraries str qcheck data-encoding)
+ (libraries str qcheck-core data-encoding)
  (instrumentation (backend bisect_ppx)))
