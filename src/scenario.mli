@@ -23,54 +23,28 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Spec
-module Gen = Spec.Gen
+(** This module handles internal representation of function. We use
+    module {!Spec} to generate type {!args}.
+    We then use {!args} to create a {!t}, stored in-memory as the
+    regression tests. *)
 
-(** [args] is an intern representation of function arguments *)
-type ('fn, 'r) args =
-  | Nil : ('r, 'r) args
-  | Cons : 'a * ('fn, 'r) args -> ('a -> 'fn, 'r) args
+type 'r res = ('r, string) result
 
-(** [spec_to_args] instantiate arguments values using generators *)
-let rec spec_to_args : type a b. (a, b) Spec.t -> (a, b) args = function
-  | Result _ -> Nil
-  | Arrow ({ gen; _ }, spec) ->
-      let x = QCheck.Gen.generate1 gen in
-      Cons (x, spec_to_args spec)
+type ('fn, 'r) t =
+  | Res : 'r res -> ('r, 'r) t
+  | Cons : 'a * ('fn, 'r) t -> ('a -> 'fn, 'r) t
 
-(** [expr] is an intern representation of a function application *)
-type _ expr =
-  | Apply : ('a -> 'b) expr * 'a expr -> 'b expr
-  | Term : 'a -> 'a expr
-  | Fun : ('a -> 'b) -> ('a -> 'b) expr
+(** [spec_to_scenario spec f] instantiate arguments values using generators inside [spec],
+    applies them to [f] *)
+val spec_to_scenario :
+  rand:Random.State.t -> ('fn, 'r) Spec.t -> 'fn -> ('fn, 'r) t
 
-let rec args_to_expr : type a b. a expr -> (a, b) args -> b expr =
- fun expr args ->
-  match args with
-  | Nil -> expr
-  | Cons (x, args) ->
-      let expr = Apply (expr, Term x) in
-      args_to_expr expr args
+(** [encoding_scenario spec] encodes a scenario using [spec], every element inside
+    [spec] __must__ contains an encoding *)
+val encoding_scenario : ('fn, 'r) Spec.t -> ('fn, 'r) t Data_encoding.encoding
 
-(** [spec_to_expr spec f] transforms a {!Spec.t} to {!expr} *)
-let spec_to_expr spec f = spec_to_args spec |> args_to_expr (Fun f)
+val pp : Format.formatter -> ('fn, 'r) Spec.t -> ('fn, 'r) t -> unit
 
-(** [interpret expr] interprets [expr] by evaluating function applications *)
-let rec interpret : type a. a expr -> a = function
-  | Apply (f, x) -> (interpret f) (interpret x)
-  | Term x -> x
-  | Fun f -> f
-
-(**/**)
-
-module Internal_for_tests = struct
-  (** [spec_to_args] instantiate arguments values using generators *)
-  let rec spec_to_args :
-      type a b. Random.State.t -> (a, b) Spec.t -> (a, b) args =
-   fun rand spec ->
-    match spec with
-    | Result _ -> Nil
-    | Arrow ({ gen; _ }, spec) ->
-        let x = QCheck.Gen.generate1 ~rand gen in
-        Cons (x, spec_to_args rand spec)
-end
+(** [reapply scenario f] takes generated parameters inside [scenario] and
+    apply them to [f] *)
+val reapply : ('fn, 'r) t -> 'fn -> ('fn, 'r) t

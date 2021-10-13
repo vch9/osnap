@@ -1,6 +1,6 @@
 opam-version: "2.0"
 name: "osnap"
-version: "0.2.0"
+version: "0.3.0"
 license: "MIT"
 synopsis: "OCaml random snapshot testing"
 
@@ -18,11 +18,12 @@ authors: [
 depends: [
   "dune" {>= "2.8.0" }
   "ocaml" {>= "4.12.0" }
-  "qcheck" {>= "0.17" }
-  "patdiff" { >= "0.14.0" }
   "ppx_deriving" { >= "5.2.1" }
-  "alcotest" { with-test & >= "1.4.0" }
+  "data-encoding" { >= "0.4" }
+  "qcheck-core" { >= "0.17"}
+  "qcheck-alcotest" { with-test & = "0.17" }
   "odoc" { with-doc }
+  "bisect_ppx" { dev & >= "2.5.0"}
 ]
 
 build: ["dune" "build" "-p" name "-j" jobs]

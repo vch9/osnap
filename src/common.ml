@@ -23,42 +23,40 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-(** This module handles internal representation of function. We use
-    module {!Spec} to generate type {!args}. This last is latter on used
-    to evaluate function with these arguments using type {!expr}.
+let dir = ".osnap"
 
-    {!args} is encoded inside snapshots, values of types {!args} are used
-    to evaluate new function under test with the same arguments.
-*)
+let sep = Filename.dir_sep
 
-type ('fn, 'r) args =
-  | Nil : ('r, 'r) args
-  | Cons : 'a * ('fn, 'r) args -> ('a -> 'fn, 'r) args
+let fname name = dir ^ sep ^ name
 
-(** [spec_to_args spec] instantiate arguments values using generators inside [spec] *)
-val spec_to_args : ('a, 'b) Spec.t -> ('a, 'b) args
+let opt_path name =
+  let cwd = Sys.getcwd () in
+  let lcwd = Str.split (Str.regexp "/_build/default/") cwd in
 
-(** [expr] is an intern representation of a function application,
-    Term inside [expr] are create using {!args}. *)
-type _ expr =
-  | Apply : ('a -> 'b) expr * 'a expr -> 'b expr
-  | Term : 'a -> 'a expr
-  | Fun : ('a -> 'b) -> ('a -> 'b) expr
+  let name = fname name in
+  match lcwd with
+  | [ pwd; path ] -> pwd ^ sep ^ path ^ sep ^ name
+  | _ -> cwd ^ sep ^ name
 
-(** [args_to_expr f args] create a function application representation using
-    type {!expr}. [f] must be a term [Fun f], the expression will then be
-    evaluated on that function [f] *)
-val args_to_expr : 'a expr -> ('a, 'b) args -> 'b expr
+let full_path path =
+  if Filename.is_relative path then Sys.getcwd () ^ sep ^ path else path
 
-(** [spec_to_expr spec] creates an {!expr} using {!spec_to_args} and {!args_to_expr} *)
-val spec_to_expr : ('a -> 'b, 'c) Spec.t -> ('a -> 'b) -> 'c expr
+let read_file path =
+  let lines = ref [] in
+  let ic = open_in path in
+  try
+    while true do
+      lines := (input_line ic ^ "\n") :: !lines
+    done ;
+    assert false
+  with End_of_file ->
+    close_in ic ;
+    List.rev !lines |> String.concat ""
 
-(** [interpret expr] evaluates [expr], providing the function a full aplication,
-    returning its result. *)
-val interpret : 'a expr -> 'a
-
-(**/**)
-
-module Internal_for_tests : sig
-  val spec_to_args : Random.State.t -> ('a, 'b) Spec.t -> ('a, 'b) args
-end
+let write path s =
+  let dir = Filename.dirname path in
+  if (not (Sys.file_exists path)) && not (Sys.file_exists dir) then
+    Unix.mkdir dir 0o755 ;
+  let oc = open_out path in
+  let () = output_string oc s in
+  close_out oc

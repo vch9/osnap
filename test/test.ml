@@ -23,12 +23,8 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Interpreter = Test_interpreter
-module Memory = Test_memory
-module Diff = Test_diff
+module Snapshot = Test_snapshot
+module Scenario = Test_scenario
 module Osnap = Test_osnap
 
-let () =
-  Alcotest.run
-    "osnap"
-    [ Interpreter.tests; Memory.tests; Diff.tests; Osnap.tests ]
+let () = Alcotest.run "osnap" [ Snapshot.tests; Scenario.tests; Osnap.tests ]

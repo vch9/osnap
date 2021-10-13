@@ -32,83 +32,15 @@ module Test = struct
     spec : ('a -> 'b, 'c) Spec.t;
     f : 'a -> 'b;
     count : int;
-    rand : Random.State.t option;
+    rand : Random.State.t;
   }
 
   type t = Test : ('a, 'b, 'c) cell -> t
 
-  let make ?(count = 10) ?rand ~path ~spec ~name f =
+  let make ?(count = 10) ?(rand = Random.State.make_self_init ()) ?path ~spec
+      ~name f =
+    let path = Option.value ~default:(Common.opt_path name) path in
     Test { path; spec; f; count; name; rand }
-end
-
-module Snapshot = struct
-  open Test
-  module M = Memory
-
-  let rec decode_applications :
-      type a b.
-      (a, b) Spec.t -> (a, b) Interpreter.args * string -> string * string =
-   fun spec (args, res) ->
-    let open Interpreter in
-    let open Spec in
-    match (args, spec) with
-    | (Cons (x, xs), Arrow ({ printer; _ }, ys)) ->
-        let s = (default_printer printer) x in
-        let (x, y) = decode_applications ys (xs, res) in
-        ("  " ^ s ^ x, y)
-    | (Nil, Result printer) ->
-        let x = M.Encode.from_string res in
-        ("", printer x)
-    | _ -> assert false
-
-  let show spec snapshot =
-    let name = M.Snapshot.name snapshot in
-    let applications =
-      M.Snapshot.applications snapshot
-      |> List.map (fun (args, res) ->
-             decode_applications spec (M.Encode.from_string args, res))
-    in
-    List.fold_left
-      (fun acc (args, res) ->
-        Printf.sprintf "%s%s  =>  %s\n%s" name args res acc)
-      ""
-      applications
-
-  let make ?rand (Test { spec; f; count; name; rand = rand'; _ }) =
-    let rand = match (rand, rand') with (None, x) -> x | (x, _) -> x in
-    let spec_to_args =
-      Option.fold
-        ~none:Interpreter.spec_to_args
-        ~some:(fun rand -> Interpreter.Internal_for_tests.spec_to_args rand)
-        (* For testing only *)
-        rand
-    in
-    let applications =
-      List.init count (fun _ ->
-          let args = spec_to_args spec in
-          let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
-          (M.Encode.to_string args [], M.Encode.to_string res []))
-    in
-    M.Snapshot.build name applications
-
-  let next test snapshot =
-    let Test.(Test { f; name; _ }) = test in
-    match snapshot with
-    | None -> make test
-    | Some prev ->
-        let decoded_applications =
-          M.Snapshot.applications prev
-          |> List.map (fun (x, y) ->
-                 (M.Encode.from_string x, M.Encode.from_string y))
-        in
-        let new_applications =
-          List.map
-            (fun (args, _) ->
-              let res = Interpreter.(args_to_expr (Fun f) args |> interpret) in
-              (M.Encode.to_string args [], M.Encode.to_string res []))
-            decoded_applications
-        in
-        M.Snapshot.build name new_applications
 end
 
 module Color = struct
@@ -129,12 +61,18 @@ end
 module Runner = struct
   type mode = Interactive | Promote | Error
 
+  type encoding = Snapshot.mode = Marshal | Data_encoding
+
   let mode_from_string s =
     let s = String.lowercase_ascii s in
     match s with
     | "interactive" -> Interactive
     | "promote" -> Promote
     | "error" | _ -> Error
+
+  let encoding_from_string s =
+    let s = String.lowercase_ascii s in
+    match s with "data_encoding" -> Data_encoding | "marshal" | _ -> Marshal
 
   type res =
     [ `Passed of string
@@ -166,8 +104,8 @@ module Runner = struct
     else Format.pp_print_string fmt s
 
   let pp_error fmt ~color = function
-    | `Error (_, x) ->
-        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure color sep x
+    | `Error (_, msg) ->
+        Format.fprintf fmt "@.--- %a %s@.@.%s@.@." pp_failure color sep msg
     | _ -> ()
 
   let pp_recap fmt ~color passed promoted ignored errors =
@@ -229,7 +167,7 @@ module Runner = struct
       fmt
       "@.@.%a@."
       pp_print_string
-      "Do you want to promote these diff? [Y\\n]"
+      "Do you want to promote this new snapshot? [Y\\n]"
 
   let rec take_input fmt () =
     let () = input_msg fmt () in
@@ -238,76 +176,119 @@ module Runner = struct
     | "n" -> false
     | _ -> take_input fmt ()
 
-  let interactive fmt diff name path snapshot =
+  let interactive ~path ~diff ~name fmt encoding spec (snapshot, snapshot_str) =
     match diff with
     | Diff.Same -> `Passed name
     | _ ->
-        let msg =
-          match diff with
-          | Diff.(New s) -> s
-          | Diff.(Diff s) -> s
-          | _ -> assert false
-        in
-        let () = Format.pp_print_string fmt msg in
+        let () = Format.pp_print_string fmt snapshot_str in
         if take_input fmt () then
-          let () = Memory.Snapshot.write path snapshot in
+          let () = Snapshot.encode ~spec ~mode:encoding ~path snapshot in
           `Promoted name
         else `Ignored name
 
-  let error diff name =
+  let error ~path ~diff ~name =
     match diff with
     | Diff.Same -> `Passed name
-    | Diff.(New s) ->
-        let msg = Printf.sprintf "Error: no previous snapshot, new:\n%s" s in
+    | Diff.(New _) ->
+        let msg =
+          Printf.sprintf
+            "Error: no previous snapshot at %s"
+            (Common.full_path path)
+        in
         `Error (name, msg)
-    | Diff.(Diff s) -> `Error (name, s)
+    | Diff.Diff diff -> `Error (name, diff)
 
-  let promote diff name path snapshot =
+  let promote ~path ~diff ~name encoding spec snapshot =
     match diff with
     | Diff.Same -> `Passed name
-    | Diff.(New _) | Diff.(Diff _) ->
-        let () = Memory.Snapshot.write path snapshot in
+    | Diff.(New _) | Diff.Diff _ ->
+        let () = Snapshot.encode ~spec ~mode:encoding ~path snapshot in
         `Promoted name
 
-  let run mode fmt test =
-    let Test.(Test { spec; path; name; _ }) = test in
-    let prev = Memory.Snapshot.read path in
-    let prev_str =
-      Option.fold
-        ~none:None
-        ~some:(fun x -> Option.some @@ Snapshot.show spec x)
-        prev
+  let map o f = Option.map f o
+
+  let ( >>| ) = map
+
+  type ('fn, 'r) intermediate_snapshot = {
+    snap : ('fn, 'r) Snapshot.t;
+    text : string;
+    path : string;
+  }
+
+  let prev spec mode path : ('a, 'b) intermediate_snapshot option =
+    Snapshot.decode_opt ~spec ~mode ~path () >>| fun snap ->
+    Snapshot.to_string spec snap |> fun text ->
+    path ^ ".prev" |> fun path -> { snap; text; path }
+
+  let next ~f ~rand ~name ~spec ~count ~path prev =
+    let snap =
+      match prev with
+      | Some { snap; _ } -> Snapshot.create_from_snapshot snap f
+      | None -> Snapshot.create ~rand ~name ~spec ~f count
+    in
+    let text = Snapshot.to_string spec snap in
+    let path = path ^ ".next" in
+    { snap; text; path }
+
+  let diff path prev next =
+    let diff_path = path ^ ".diff" in
+    ( Diff.diff
+        ~path:diff_path
+        ~prev:(prev >>| fun prev -> prev.path)
+        ~next:next.path,
+      diff_path )
+
+  let prepare_run prev next =
+    Option.iter (fun prev -> Common.write prev.path prev.text) prev ;
+    Common.write next.path next.text
+
+  let clean_run prev next diff_path =
+    let clean fd = if Sys.file_exists fd then Sys.remove fd in
+    Option.iter (fun prev -> clean prev.path) prev ;
+    clean next.path ;
+    clean diff_path
+
+  let run encoding mode fmt test =
+    let Test.(Test { spec; path; name; rand; count; f; _ }) = test in
+
+    let prev = prev spec encoding path in
+    let next = next ~f ~rand ~name ~spec ~count ~path prev in
+    let () = prepare_run prev next in
+
+    let (diff, diff_path) = diff path prev next in
+
+    let res =
+      match mode with
+      | Error -> error ~path ~diff ~name
+      | Promote -> promote ~path ~diff ~name encoding spec next.snap
+      | Interactive ->
+          interactive ~path ~diff ~name fmt encoding spec (next.snap, next.text)
     in
 
-    let next = Snapshot.next test prev in
-    let next_str = Snapshot.show spec next in
+    let () = clean_run prev next diff_path in
+    res
 
-    let diff = Diff.diff prev_str next_str in
-    match mode with
-    | Error -> error diff name
-    | Promote -> promote diff name path next
-    | Interactive -> interactive fmt diff name path next
-
-  let run_tests_with_res mode out tests : res * int =
-    let res = List.map (run mode out) tests in
+  let run_tests_with_res encoding mode out tests : res * int =
+    let res = List.map (run encoding mode out) tests in
     let status =
       if List.exists (function `Error _ -> true | _ -> false) res then 1
       else 0
     in
     (res, status)
 
-  let run_tests ?(mode = Error) ?(out = Format.std_formatter) ?(color = true)
-      tests =
-    let (res, status) = run_tests_with_res mode out tests in
+  let run_tests ?(encoding = Marshal) ?(mode = Error)
+      ?(out = Format.std_formatter) ?(color = true) tests =
+    let (res, status) = run_tests_with_res encoding mode out tests in
     let () = pp_res out ~color res in
     status
 
   module Cli = struct
-    type args = { mode : mode; color : bool }
+    type args = { mode : mode; color : bool; encoding : encoding }
 
     let parse argv =
       let mode = ref "" in
       let color = ref false in
+      let encoding = ref "" in
 
       let options =
         Arg.align
@@ -316,11 +297,14 @@ module Runner = struct
             ("-m", Arg.Set_string mode, " set runner mode");
             ("--color", Arg.Set color, " set color output");
             ("-c", Arg.Set color, " set color output");
+            ("-encoding", Arg.Set_string encoding, " set encoding mode");
+            ("-e", Arg.Set_string encoding, " set encoding mode");
           ]
       in
       let () = Arg.parse_argv argv options (fun _ -> ()) "run osnap suite" in
       let mode = mode_from_string !mode in
-      { mode; color = !color }
+      let encoding = encoding_from_string !encoding in
+      { mode; color = !color; encoding }
   end
 
   let run_tests_main ?(argv = Sys.argv) tests =

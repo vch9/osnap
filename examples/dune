@@ -1,3 +1,7 @@
-(executables
- (names interactive promote error)
+(executable
+ (name exponentiation)
  (libraries osnap))
+
+(rule
+ (alias runtest)
+ (action (run %{exe:exponentiation.exe})))

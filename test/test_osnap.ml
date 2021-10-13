@@ -23,138 +23,247 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-module Spec = Osnap.Spec
-module M = Osnap__Memory
+open Test_helpers
 module Test = Osnap.Test
-module Snapshot = Osnap.Snapshot
+module Runner = Osnap.Runner
+module Snapshot = Osnap__Snapshot
 
-let small_int =
-  Spec.{ gen = QCheck.Gen.small_int; printer = Some string_of_int }
+let eq_snapshot = Test_snapshot.eq
 
-let spec = Spec.(small_int ^> small_int ^>> string_of_int)
+let eq_res : Runner.res -> Runner.res -> bool =
+  let eq_aux x y =
+    match (x, y) with
+    | (`Passed x, `Passed y) -> x = y
+    | (`Promoted x, `Promoted y) -> x = y
+    | (`Ignored x, `Ignored y) -> x = y
+    | (`Error (x1, _), `Error (x2, _)) -> x1 = x2
+    | _ -> false
+  in
+  List.equal eq_aux
 
-let pp_res fmt =
+let pp_res =
   let pp_aux fmt = function
-    | `Passed s -> Format.fprintf fmt "Passed %s" s
-    | `Promoted s -> Format.fprintf fmt "Promoted %s" s
-    | `Ignored s -> Format.fprintf fmt "Ignored %s" s
-    | `Error (s, s') -> Format.fprintf fmt "Error (%s, %s)" s s'
+    | `Passed s -> Format.fprintf fmt "`Passed %s" s
+    | `Promoted s -> Format.fprintf fmt "`Promoted %s" s
+    | `Ignored s -> Format.fprintf fmt "`Ignored %s" s
+    | `Error (s1, s2) -> Format.fprintf fmt "`Error (%s, %s)" s1 s2
   in
-  Format.pp_print_list pp_aux fmt
+  Format.pp_print_list pp_aux
 
-let eq_res = Alcotest.of_pp pp_res
+let check_res = Alcotest.of_pp pp_res
 
-let test_create_snapshot_one () =
-  let rand = Random.State.make [| 42; 9 |] in
+let path = "./foo"
 
-  let spec = Spec.(int ^> int ^>> string_of_int) in
-  let test = Test.(make ~count:1 ~path:"" ~name:"foo" ~spec ( + )) in
-  let snapshot = Snapshot.make ~rand test in
+and name = "foo"
 
-  let expected =
-    {|foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
-|}
+and spec = spec_add
+
+and count = 5
+
+let test_add seed = Test.make ~count ~rand:(RS.make seed) ~spec ~name ~path add
+
+let snapshot_add seed =
+  Snapshot.create ~rand:(RS.make seed) ~name ~spec ~f:add count
+
+let test_mul seed =
+  Test.make ~count ~rand:(RS.make seed) ~spec ~name ~path Int.mul
+
+let snapshot_mul seed =
+  Snapshot.create ~rand:(RS.make seed) ~name ~spec ~f:Int.mul count
+
+let test_promote_data_encoding_good () =
+  let () = Sys.remove path in
+  let _ =
+    Runner.run_tests ~encoding:Data_encoding ~mode:Promote [ test_add seed ]
   in
-  let actual = Snapshot.show spec snapshot in
+  let actual = Snapshot.decode ~mode:Data_encoding ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote Data_encoding s; decode s = s"
+    (snapshot_add seed)
+    actual
 
-  Alcotest.(check string) "create snapshot" expected actual
+let test_promote_marshal_good () =
+  let () = Sys.remove path in
+  let _ = Runner.run_tests ~encoding:Marshal ~mode:Promote [ test_add seed ] in
+  let actual = Snapshot.decode ~mode:Marshal ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote Marshal s; decode s = s"
+    (snapshot_add seed)
+    actual
 
-let test_create_snapshot_two () =
-  let rand = Random.State.make [| 42; 9 |] in
-
-  let spec = Spec.(int ^> int ^>> string_of_int) in
-  let test = Test.(make ~count:2 ~path:"" ~name:"foo" ~spec ( + )) in
-  let snapshot = Snapshot.make ~rand test in
-
-  let expected =
-    {|foo  -1045094426214325490  -2812697657021115463  =>  -3857792083235440953
-foo  3306656436478733947  2323438535601724629  =>  -3593277064774317232
-|}
+(* Re-running the same test should not change the snapshot *)
+let test_promote_twice () =
+  let () = Sys.remove path in
+  let _ =
+    Runner.run_tests
+      ~encoding:Marshal
+      ~mode:Promote
+      [ test_add seed; test_add [| 0 |] ]
   in
-  let actual = Snapshot.show spec snapshot in
+  let expected = snapshot_add seed in
+  let actual = Snapshot.decode ~mode:Marshal ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote the same test twice gives the same snapshot"
+    expected
+    actual
 
-  Alcotest.(check string) "create snapshot" expected actual
-
-let test_fancy_show () =
-  let rand = Random.State.make [| 42; 9 |] in
-
-  let spec = Spec.(small_int ^> small_int ^>> string_of_int) in
-
-  let test = Test.(make ~count:5 ~path:"" ~name:"add" ~spec ( + )) in
-  let snapshot = Snapshot.make ~rand test in
-
-  let expected =
-    {|add  66  55  =>  121
-add  8  67  =>  75
-add  5  3  =>  8
-add  56  45  =>  101
-add  37  4  =>  41
-|}
+(* Promote from a snapshot with the addition to a test with the multiplication should
+   produce the same snapshot as {!snapshot_mul} *)
+let test_promote_changes_snapshot () =
+  let () = Sys.remove path in
+  let _ =
+    Runner.run_tests
+      ~encoding:Marshal
+      ~mode:Promote
+      [ test_add seed; test_mul [| 0 |] ]
   in
-  let actual = Snapshot.show spec snapshot in
+  let expected = snapshot_mul seed in
+  let actual = Snapshot.decode ~mode:Marshal ~spec:spec_add ~path () in
+  Alcotest.(check (eq_snapshot spec_add))
+    "promote from add to mul changes the snapshot"
+    expected
+    actual
 
-  Alcotest.(check string) "fancy show" expected actual
-
-let test_run_error_same () =
-  let rand = Random.State.make [| 42; 9 |] in
-  let path = "./add.osnap" in
-  let test = Test.(make ~count:5 ~path ~name:"add" ~spec ( + )) in
-  let snapshot = Snapshot.make ~rand test in
-  let () = M.Snapshot.write path snapshot in
-
-  let actual = Osnap.Runner.(run_tests ~mode:Error [ test ]) in
-
-  Alcotest.(check int) "test run raises no error on same" 0 actual
-
-let test_run_error_new () =
-  let rand = Random.State.make [| 42; 9 |] in
-  let test = Test.(make ~count:5 ~rand ~path:"" ~name:"add" ~spec ( + )) in
-
-  let expected =
-    [
-      `Error
-        ( "add",
-          {|Error: no previous snapshot, new:
-add  66  55  =>  121
-add  8  67  =>  75
-add  5  3  =>  8
-add  56  45  =>  101
-add  37  4  =>  41
-|}
-        );
-    ]
+(* Run without precedent snapshot on mode Error raises an error *)
+let test_error_no_snapshot () =
+  let () = Sys.remove path in
+  let expected : Runner.res =
+    [ `Error ("foo", Printf.sprintf "Error: no previous snapshot at %s" path) ]
   in
   let actual =
-    Osnap.Runner.(run_tests_with_res Error Format.std_formatter [ test ]) |> fst
-  in
-
-  Alcotest.check eq_res "run on new diff returns error" expected actual
-
-let test_run_promote () =
-  let rand = Random.State.make [| 42; 9 |] in
-  let path = "./add.osnap" in
-
-  let () = if Sys.file_exists path then Sys.remove path in
-
-  let test = Test.(make ~count:5 ~rand ~path ~name:"add" ~spec ( + )) in
-
-  let expected = [ `Promoted "add" ] in
-
-  let actual =
-    Osnap.Runner.(run_tests_with_res Promote Format.std_formatter [ test ])
+    Runner.run_tests_with_res
+      Marshal
+      Error
+      Format.std_formatter
+      [ test_add seed ]
     |> fst
   in
+  Alcotest.(check bool) "should returns errors" true (eq_res expected actual)
 
-  Alcotest.check eq_res "run on promote returns promote" expected actual
+(* Run Promote then Error the same test passes *)
+let test_promote_error () =
+  let expected = [ `Passed "foo" ] in
+  let _ =
+    Runner.run_tests_with_res
+      Marshal
+      Promote
+      Format.std_formatter
+      [ test_add seed ]
+  in
+  let actual =
+    Runner.run_tests_with_res
+      Marshal
+      Error
+      Format.std_formatter
+      [ test_add seed ]
+    |> fst
+  in
+  Alcotest.check check_res "should pass" expected actual
+
+(* Run Promote then Error with a different scenarios *)
+let test_error_with_diff () =
+  let expected = 1 in
+  let _ =
+    Runner.run_tests_with_res
+      Marshal
+      Promote
+      Format.std_formatter
+      [ test_add seed ]
+  in
+  let actual =
+    Runner.run_tests_with_res
+      Marshal
+      Error
+      Format.std_formatter
+      [ test_mul seed ]
+    |> snd
+  in
+  Alcotest.(check int) "should fail" expected actual
+
+let gen_mode_args =
+  let open QCheck.Gen in
+  let args = [ "--mode"; "-m" ] |> List.map pure in
+  let values =
+    [ "error"; "interactive"; "promote" ] |> List.map pure |> fun correct ->
+    frequency [ (5, oneof correct); (1, string_readable) ]
+  in
+  pair (oneof args) values >>= fun (arg, value) -> pure (arg, value)
+
+let gen_encoding_args =
+  let open QCheck.Gen in
+  let args = [ "--color"; "-c" ] |> List.map pure in
+  let values =
+    [ "true"; "false" ] |> List.map pure |> fun correct ->
+    frequency [ (5, oneof correct); (1, string_readable) ]
+  in
+  pair (oneof args) values >>= fun (arg, b) -> pure (arg, b)
+
+let gen_color_args =
+  let open QCheck.Gen in
+  let args = [ "--encoding"; "-e" ] |> List.map pure in
+  let values =
+    [ "marshal"; "data_encoding" ] |> List.map pure |> fun correct ->
+    frequency [ (5, oneof correct); (1, string_readable) ]
+  in
+  pair (oneof args) values >>= fun (arg, value) -> pure (arg, value)
+
+let arb_mode_args = QCheck.make gen_mode_args
+
+let arb_encoding_args = QCheck.make gen_encoding_args
+
+let arb_color_args = QCheck.make gen_color_args
+
+let test_parse_mode =
+  QCheck.Test.make ~name:"CLI parse mode" arb_mode_args (fun (arg, mode) ->
+      let argv = [| arg; mode |] in
+      let args = Osnap.Runner.Cli.parse argv in
+
+      (mode = "error" && args.mode = Error)
+      || (mode = "promote" && args.mode = Promote)
+      || (mode = "interactive" && args.mode = Interactive)
+      || args.mode = Error)
+
+let test_parse_color =
+  QCheck.Test.make ~name:"CLI parse color" arb_color_args (fun (arg, color) ->
+      let argv = [| arg; color |] in
+      let args = Osnap.Runner.Cli.parse argv in
+
+      (color = "true" && args.color)
+      || (color = "false" && not args.color)
+      || not args.color)
+
+let test_parse_encoding =
+  QCheck.Test.make
+    ~name:"CLI parse encoding"
+    arb_encoding_args
+    (fun (arg, encoding) ->
+      let argv = [| arg; encoding |] in
+      let args = Osnap.Runner.Cli.parse argv in
+
+      (encoding = "marshal" && args.encoding = Marshal)
+      || (encoding = "data_encoding" && args.encoding = Data_encoding)
+      || args.encoding = Data_encoding)
+
+let qcheck_tests =
+  [ test_parse_mode; test_parse_color ]
+  |> List.map (QCheck_alcotest.to_alcotest ~rand)
 
 let tests =
-  ( "Osnap",
-    Alcotest.
-      [
-        test_case "create snapshot" `Quick test_create_snapshot_one;
-        test_case "create snapshot" `Quick test_create_snapshot_two;
-        test_case "show fancy snapshot" `Quick test_fancy_show;
-        test_case "run error same" `Quick test_run_error_same;
-        test_case "run error new" `Quick test_run_error_new;
-        test_case "run promote" `Quick test_run_promote;
-      ] )
+  Alcotest.
+    [
+      test_case
+        "test_promote_data_encoding_good"
+        `Quick
+        test_promote_data_encoding_good;
+      test_case "test_promote_marshal_good" `Quick test_promote_marshal_good;
+      test_case "test_promote_twice" `Quick test_promote_twice;
+      test_case
+        "test_promote_changes_snapshot"
+        `Quick
+        test_promote_changes_snapshot;
+      test_case "test_error_no_snapshot" `Quick test_error_no_snapshot;
+      test_case "test_promote_error" `Quick test_promote_error;
+      test_case "test_error_with_diff" `Quick test_error_with_diff;
+    ]
+
+let tests = ("Osnap", qcheck_tests @ tests)

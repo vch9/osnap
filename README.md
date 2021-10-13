@@ -45,11 +45,18 @@ In the above, we first provide a naive implementation of the exponentiation.
 Then, we create a test with the according specification using `Osnap` combinator.
 
 ```
-exponentiation 14	4	38416
-exponentiation 13	11	1792160394037
-exponentiation 11	1	11
-exponentiation 12	2	144
-exponentiation 2	14	16384
+{
+  name = exponentiation;
+  scenarios = [
+	35	66	=	4292184014870020553
+	0	3	=	0
+	9	3	=	729
+	3	7	=	2187
+	67	9	=	27206534396294947
+  ]
+}
+
+Do you want to promote these diff? [Y\n]
 ```
 
 As we agree with our function result, we promote the change by typing `Y`.
@@ -75,10 +82,7 @@ let _ = Osnap.Runner.(run_tests ~mode:Interactive [ test ])
 
 Finally, we get the following result:
 ```
-Recap:
-      1 passed
-      0 promoted
-      0 ignored
-      0 fails
+-------------------------------------------------------------------------------
+success: ran 1 test (1 passed)
 ```
 `Osnap` has not found any difference between the old and new snapshot :heavy_check_mark:.

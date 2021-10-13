@@ -23,38 +23,42 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Osnap__Spec
-open Osnap__Interpreter
-module Gen = Osnap__Spec.Gen
+open Osnap
+module RS = Random.State
 
-let spec_n n =
-  let gen = Gen.pure n in
-  let printer = Some string_of_int in
-  { gen; printer }
+let seed = [| 42 |]
 
-let zero = spec_n 0
+let rand = Random.State.make seed
 
-let test_interpret_add () =
-  let f = ( + ) in
-  let spec = zero ^> zero ^>> string_of_int in
-  let expr = spec_to_expr spec f in
-  let actual = interpret expr in
-  Alcotest.(check int) "to_expr (0 ^> 0 ^>> _) (+) |> interpret = 0" 0 actual
+let small_int =
+  Spec.build
+    ~printer:string_of_int
+    ~encoding:Data_encoding.int31
+    QCheck.Gen.small_int
 
-let test_interpret_sum () =
-  let f = List.fold_left ( + ) 0 in
-  let spec = list zero ^>> string_of_int in
-  let expr = spec_to_expr spec f in
-  let actual = interpret expr in
-  Alcotest.(check int)
-    "to_expr ([0..0] ^>> _) (fold_left (+) 0) |> interpret = 0"
-    0
-    actual
+let res_int = Spec.Result.int
 
-let tests =
-  ( "Interpreter",
-    Alcotest.
-      [
-        test_case "interpret add 0 0 = 0" `Quick test_interpret_add;
-        test_case "interpret sum [0..0] = 0" `Quick test_interpret_sum;
-      ] )
+let add = ( + )
+
+let spec_add = Spec.(small_int ^> small_int ^>> res_int)
+
+let qcheck_eq ?pp ?cmp ?eq expected actual =
+  let pass =
+    match (eq, cmp) with
+    | (Some eq, _) -> eq expected actual
+    | (None, Some cmp) -> cmp expected actual = 0
+    | (None, None) -> Stdlib.compare expected actual = 0
+  in
+  if pass then true
+  else
+    match pp with
+    | None ->
+        QCheck.Test.fail_reportf
+          "@[<h 0>Values are not equal, but no pretty printer was provided.@]"
+    | Some pp ->
+        QCheck.Test.fail_reportf
+          "@[<v 2>Equality check failed!@,expected:@,%a@,actual:@,%a@]"
+          pp
+          expected
+          pp
+          actual

@@ -23,41 +23,49 @@
 (*                                                                           *)
 (*****************************************************************************)
 
-open Osnap__Diff
+module S = Osnap__Scenario
+open Test_helpers
 
-let eq = Alcotest.of_pp pp
+let eq spec = Alcotest.of_pp (fun fmt -> S.pp fmt spec)
 
-let test_diff_new () =
-  let prev = None in
-  let next = "foo" in
+let test_reapply_good () =
+  let scenario = S.(Cons (1, Cons (1, Res (Ok 2)))) in
+  let actual = S.reapply scenario add in
+  Alcotest.(check (eq spec_add))
+    "reapply with same f must returns the same scenario"
+    scenario
+    actual
 
-  let expected = New "foo" in
-  let actual = diff prev next in
+let test_pp () =
+  let pp fmt = S.pp fmt spec_add in
+  let scenario = S.(Cons (0, Cons (1, Res (Ok 1)))) in
+  let expected = Printf.sprintf "0\t1\t=\t1" in
+  let actual = Format.asprintf "%a" pp scenario in
+  Alcotest.(check string) "test pp scenario" expected actual
 
-  Alcotest.check eq "diff None foo = New foo" expected actual
+let test_raises_exception () =
+  let spec = Osnap.Spec.(small_int ^>> Result.int) in
+  let f _ = failwith "error" in
+  let actual = S.spec_to_scenario ~rand spec f in
+  let expected = S.(Cons (5, Res (Error "Failure(\"error\")"))) in
+  Alcotest.check (eq spec) "exception is catched" expected actual
 
-let test_diff_same () =
-  let prev = Some "foo" in
-  let next = "foo" in
-
-  let expected = Same in
-  let actual = diff prev next in
-
-  Alcotest.check eq "diff (Some foo) foo = Sucess" expected actual
-
-let test_diff () =
-  let prev = Some "oof" in
-  let next = "foo" in
-
-  let expected = Diff "foo" in
-  let actual = diff prev next in
-
-  Alcotest.check eq "diff (Some foo) foo = Sucess" expected actual
+let test_reapply_exception () =
+  let spec = Osnap.Spec.(small_int ^>> Result.int) in
+  let scenario = S.(Cons (5, Res (Error "Failure(\"error\")"))) in
+  let f _ = failwith "error" in
+  let actual = S.reapply scenario f in
+  Alcotest.check (eq spec) "reapply with exceptions" scenario actual
 
 let tests =
-  ( "Diff",
+  ( "Scenario",
     Alcotest.
       [
-        test_case "test diff new" `Quick test_diff_new;
-        test_case "test diff same" `Quick test_diff_same;
+        test_case
+          "test_reapply scenario on equivalent new f"
+          `Quick
+          test_reapply_good;
+        test_case "test pp scenario" `Quick test_pp;
+        test_case "test exception catched" `Quick test_raises_exception;
+        test_case "test reapply with exceptions" `Quick test_reapply_exception;
       ] )

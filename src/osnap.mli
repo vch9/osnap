@@ -83,17 +83,16 @@ module Spec : sig
   include module type of Spec
 end
 
-(** {2 Test creation }
-
-*)
+(** {2 Test creation } *)
 
 module Test : sig
   type t
 
   (** [make path spec name f] builds a test
+
       @param count number of application
       @param rand random state
-      @param path where snapshots are stored 
+      @param path where snapshots are stored
       @param spec function specification
       @param name function name
       @param f function to snapshot
@@ -101,22 +100,12 @@ module Test : sig
   val make :
     ?count:int ->
     ?rand:Random.State.t ->
-    path:string ->
+    ?path:string ->
     spec:('a -> 'b, 'c) Spec.t ->
     name:string ->
     ('a -> 'b) ->
     t
 end
-
-(**/**)
-
-module Snapshot : sig
-  val show : ('a, 'b) Spec.t -> Memory.Snapshot.t -> string
-
-  val make : ?rand:Random.State.t -> Test.t -> Memory.Snapshot.t
-end
-
-(**/**)
 
 (** {2 Runner}
 
@@ -214,6 +203,11 @@ module Runner : sig
     | Promote  (** Promote mode, will promote every diff *)
     | Error  (** Error mode, raises error on diff *)
 
+  type encoding =
+    | Marshal  (** Snapshot will be encoded using binaries with Marshal *)
+    | Data_encoding
+        (** Snapshot will be encoded using a JSON with the library Data_encoding *)
+
   (**/**)
 
   type res =
@@ -223,18 +217,35 @@ module Runner : sig
     | `Error of string * string ]
     list
 
-  val run_tests_with_res : mode -> Format.formatter -> Test.t list -> res * int
+  val run_tests_with_res :
+    encoding -> mode -> Format.formatter -> Test.t list -> res * int
 
   (**/**)
 
   (** [run_tests tests] runs suite of [tests] and print its results
 
       @return an error code, [0] if all tests passed, [1] otherwise
+      @param encoding, default is Marshal
       @param mode default is Error
       @param color, if true, colorful output
       *)
   val run_tests :
-    ?mode:mode -> ?out:Format.formatter -> ?color:bool -> Test.t list -> int
+    ?encoding:encoding ->
+    ?mode:mode ->
+    ?out:Format.formatter ->
+    ?color:bool ->
+    Test.t list ->
+    int
+
+  (**/**)
+
+  module Cli : sig
+    type args = { mode : mode; color : bool; encoding : encoding }
+
+    val parse : string array -> args
+  end
+
+  (**/**)
 
   (** [run_tests_main] can be used as the main function of a test file. Exits
     with a non-0 code if the tests fail. It refers to {!run_tests} for
@@ -244,7 +255,8 @@ module Runner : sig
       The available options are:
 
       - "--mode <m>" (or "-m <m>") for running mode
-      - "--color <b>" (or "-c" <b>) for activating colors
+      - "--color <b>" (or "-c <b>") for activating colors
+      - "--encoding <e>" (or "-e <e>") for encoding mode
   *)
   val run_tests_main : ?argv:string array -> Test.t list -> 'a
 end
